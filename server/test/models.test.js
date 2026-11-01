@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import mongoose from 'mongoose'
-import { AssistantConversation, Attendance, Conversation, Grade, PasswordReset, Timetable, User } from '../src/models/index.js'
+import { AssistantConversation, Attendance, Conversation, Grade, PasswordReset, Timetable, Upload, User } from '../src/models/index.js'
 
 test('attendance schema enforces one record per student and date', () => {
   const uniqueAttendanceIndex = Attendance.schema.indexes().find(([keys, options]) => (
@@ -14,6 +14,11 @@ test('private credential fields are excluded from normal user queries', () => {
   assert.equal(User.schema.path('passwordHash').options.select, false)
   assert.equal(User.schema.path('refreshTokenHashes').options.select, false)
   assert.equal(User.schema.path('tokenVersion').options.select, false)
+})
+
+test('upload contents are stored in MongoDB and excluded from ordinary queries', () => {
+  assert.equal(Upload.schema.path('fileData').instance, 'Buffer')
+  assert.equal(Upload.schema.path('fileData').options.select, false)
 })
 
 test('password reset and conversation uniqueness have database indexes', () => {

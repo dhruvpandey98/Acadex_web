@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { mkdir } from 'node:fs/promises'
 import express from 'express'
 import cookieParser from 'cookie-parser'
@@ -15,6 +16,7 @@ import uploadRoutes from './routes/uploads.js'
 import aiRoutes from './routes/ai.js'
 import academicAiRoutes from './routes/aiRoutes.js'
 import { errorHandler, notFound } from './utils/errors.js'
+import { getClientUrl } from './config/clientUrl.js'
 
 export async function createApp() {
   await mkdir(path.resolve(process.cwd(), 'uploads'), { recursive: true })
@@ -23,7 +25,7 @@ export async function createApp() {
   app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false)
   app.use(helmet())
   app.use(cors({
-    origin: (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((url) => url.trim()),
+    origin: getClientUrl().split(',').map((url) => url.trim()),
     credentials: true,
   }))
   app.use(express.json({ limit: '1mb' }))
@@ -145,6 +147,16 @@ export async function createApp() {
     }
   }
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
+  if (process.env.NODE_ENV === 'production') {
+    const frontendDirectory = fileURLToPath(new URL('../../dist/', import.meta.url))
+    app.use(express.static(frontendDirectory))
+    app.get('/{*path}', (req, res, next) => {
+      if (req.path === '/api' || req.path.startsWith('/api/')) return next()
+      return res.sendFile(path.join(frontendDirectory, 'index.html'), (error) => {
+        if (error) next(error)
+      })
+    })
+  }
   app.use(notFound)
   app.use(errorHandler)
   return app

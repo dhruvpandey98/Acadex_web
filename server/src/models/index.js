@@ -212,6 +212,7 @@ const uploadSchema = new Schema({
   originalName: { type: String, required: true },
   mimeType: { type: String, required: true },
   size: { type: Number, required: true },
+  fileData: { type: Buffer, select: false },
   storedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true })
 

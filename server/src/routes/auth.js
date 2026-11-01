@@ -10,6 +10,7 @@ import { authenticate } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { AppError, asyncHandler } from '../utils/errors.js'
 import { cookieOptions, signAccessToken, signRefreshToken, tokenDigest } from '../utils/auth.js'
+import { getClientUrl } from '../config/clientUrl.js'
 
 const router = Router()
 const accessCookie = 'acadex_access'
@@ -178,7 +179,7 @@ router.post('/forgot-password', resetLimiter,
         secure: process.env.SMTP_SECURE === 'true',
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
       })
-      const resetUrl = new URL('/reset-password', process.env.CLIENT_URL || 'http://localhost:5173')
+      const resetUrl = new URL('/reset-password', getClientUrl())
       resetUrl.searchParams.set('token', rawToken)
       resetUrl.searchParams.set('email', user.email)
       await transporter.sendMail({

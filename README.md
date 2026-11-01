@@ -4,7 +4,7 @@ Acadex is a React/Vite school portal with an Express, MongoDB, and Socket.IO bac
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22.12 or newer (the Render deployment pins Node.js 24.22.1)
 - MongoDB 6 or newer, locally or through Atlas
 - npm
 
@@ -34,6 +34,24 @@ npm run dev
 ```
 
 The backend waits for a successful database connection before listening. Check `http://localhost:5000/api/health`; a healthy response is `{"status":"ok","database":"connected"}`. If it reports HTTP 503 or the backend logs a connection error, verify the Atlas URI, database user/password, and Network Access IP allowlist. Vite proxies `/api` and `/socket.io` to `http://localhost:5000`. Swagger UI is available at `http://localhost:5000/api/docs`.
+
+## Free deployment (Render and MongoDB Atlas)
+
+The repository includes a Render Blueprint in `render.yaml`. It builds the Vite frontend and Express backend as one native Node.js web service, then serves both from the same HTTPS origin. A Dockerfile is not required: Render's Node runtime handles the build and start commands. Keeping the UI and API on one origin preserves the app's HTTP-only, `SameSite=Strict` authentication cookies.
+
+1. Create a MongoDB Atlas free cluster, database user, and database connection string. In Atlas Network Access, allow the outbound IP ranges shown for your Render service/region. The application selects the `acadex` database. Keep the database user password URL-encoded in the connection string.
+2. Push this repository to GitHub and create a Render **Blueprint** from it. Render reads `render.yaml`; choose the free web-service plan and provide the requested values:
+   - `MONGODB_URI`: the Atlas connection string.
+   - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`: two different, randomly generated secrets, each at least 32 characters.
+3. Wait for the build and deploy to finish. Open the Render service URL; confirm `/api/health` returns `{"status":"ok","database":"connected"}`.
+4. If you add a custom domain, set `CLIENT_URL` in the Render service environment to the frontend's HTTPS origin. Do not set `VITE_API_URL` for this single-origin deployment.
+5. Configure optional features only if needed: `GEMINI_API_KEY` and `GEMINI_MODEL` for the academic assistant; `AI_API_KEY`, `AI_MODEL`, and optionally `AI_BASE_URL` for the AI study buddy; `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `MAIL_FROM` for password-reset email. Keep all credentials in Render's environment settings, never in frontend variables or source control.
+
+Render's free web services sleep after 15 minutes without traffic and can take about a minute to wake. Their local filesystem is ephemeral. New uploads are stored in MongoDB so they survive service restarts and deploys; keep in mind the Atlas free cluster has limited storage, and each upload is capped at 10 MiB.
+
+The seed script is development-only and creates accounts with a shared password. Do not seed a public deployment with the default password or use this free setup for real student records: free hosting is intended for demos and testing, not production workloads or sensitive education data. Public registration creates student accounts only; there is no public admin registration endpoint.
+
+For a disposable demo that needs the seeded admin, teacher, and parent accounts, set a unique `DEMO_PASSWORD` in Render's environment settings, then run `NODE_ENV=development npm --prefix server run seed` from the Render Shell. This command seeds data without changing the deployed service's `NODE_ENV`; never use the published default demo password.
 
 ## Demo data
 
@@ -65,7 +83,7 @@ Admins can create linked student and teacher accounts from the portal by supplyi
 - Passwords use bcrypt with 12 rounds. Refresh tokens and reset tokens are persisted only as SHA-256 digests.
 - Login and password-reset endpoints have rate limits. Password reset requires SMTP configuration (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, and `MAIL_FROM`); when it is not configured, the API reports a configuration error rather than pretending an email was sent.
 - Roles and record ownership are checked on the server. Admin accounts cannot be created through public registration.
-- Uploads are limited to 10 MiB and PDF, PNG, JPEG, WebP, or plain-text MIME types.
+- Uploads are limited to 10 MiB and PDF, PNG, JPEG, WebP, or plain-text MIME types. File content is stored in MongoDB so it persists across service restarts.
 - Fee records are status tracking only; no payment gateway is connected.
 - AI tutor requests run server-side using the OpenAI-compatible provider configured by `AI_API_KEY`, `AI_MODEL`, and optionally `AI_BASE_URL`. Keep the provider key in the server environment only. The chat is explicitly unavailable until configured; requests are rate limited and chat history is private to the authenticated user.
 - School record, dashboard, messaging, and notification screens read from MongoDB-backed API endpoints. Class/subject catalogs, grades, fees, and timetable are currently read-only in the portal UI; their API resources support role-scoped CRUD where authorized.
