@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.js'
 import resourceRoutes from './routes/resources.js'
 import dashboardRoutes from './routes/dashboard.js'
 import uploadRoutes from './routes/uploads.js'
+import datasetRoutes from './routes/dataset.js'
 import aiRoutes from './routes/ai.js'
 import academicAiRoutes from './routes/aiRoutes.js'
 import { errorHandler, notFound } from './utils/errors.js'
@@ -41,6 +42,7 @@ export async function createApp() {
   app.use('/api', resourceRoutes)
   app.use('/api/dashboard', dashboardRoutes)
   app.use('/api/uploads', uploadRoutes)
+  app.use('/api/dataset', datasetRoutes)
   app.use('/api/ai', aiRoutes)
   app.use('/api/ai', academicAiRoutes)
 
@@ -60,6 +62,7 @@ export async function createApp() {
   })
   swaggerDocument.paths = {
     '/health': { get: { summary: 'API health', responses: { 200: { description: 'Service and database are available.' }, 503: { description: 'Database is unavailable.' } } } },
+    '/dataset/insights': { get: { summary: 'Read admin-only synthetic dataset insights', security: [{ accessCookie: [] }], responses: { 200: { description: 'Dataset summary and paginated synthetic student indicators.' }, 403: { description: 'Admin role required.' } } } },
     '/auth/register': { post: { summary: 'Register a student account', responses: { 201: { description: 'Account created.' } } } },
     '/auth/login': { post: { summary: 'Create a session', responses: { 200: { description: 'Authenticated.' } } } },
     '/auth/logout': { post: { summary: 'End the current session', responses: { 204: { description: 'Session ended.' } } } },

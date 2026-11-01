@@ -6,11 +6,17 @@ const LandingPage = lazy(() => import('./pages/landing/LandingPage.jsx'))
 const AuthPage = lazy(() => import('./pages/auth/AuthPage.jsx'))
 const PortalLayout = lazy(() => import('./components/layout/PortalLayout.jsx'))
 const PortalPage = lazy(() => import('./pages/portal/PortalPage.jsx'))
+const DatasetInsights = lazy(() => import('./pages/portal/DatasetInsights.jsx'))
 
 function ProtectedPortal() {
   const { user, authLoading } = useApp()
   if (authLoading) return <div className="route-loading">Checking your Acadex session…</div>
   return user ? <PortalLayout /> : <Navigate to="/login" replace />
+}
+
+function AdminDatasetInsights() {
+  const { user } = useApp()
+  return user?.role === 'Admin' ? <DatasetInsights /> : <Navigate to="/portal" replace />
 }
 
 export default function App() {
@@ -25,6 +31,7 @@ export default function App() {
       <Route path="/reset-password" element={<AuthPage mode="reset" />} />
       <Route path="/portal" element={<ProtectedPortal />}>
         <Route index element={<PortalPage />} />
+        <Route path="dataset-insights" element={<AdminDatasetInsights />} />
         <Route path=":section" element={<PortalPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

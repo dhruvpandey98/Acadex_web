@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BookOpen, CalendarDays, ChevronDown, ChevronLeft, GraduationCap, LayoutDashboard, LogOut, Menu, MessageSquare, Search, Settings, Users, X } from 'lucide-react'
+import { Bell, BookOpen, CalendarDays, ChevronDown, ChevronLeft, Database, GraduationCap, LayoutDashboard, LogOut, Menu, MessageSquare, Search, Settings, Users, X } from 'lucide-react'
 import { useApp } from '../../hooks/useApp.js'
 import { navigationByRole } from '../../data/mockData.js'
 import { Avatar } from '../common/UI.jsx'
 import { portalApi } from '../../services/portalService.js'
 
-const icons = { Overview: LayoutDashboard, Analytics: LayoutDashboard, Reports: BookOpen, Students: Users, Teachers: Users, Classes: GraduationCap, Subjects: BookOpen, Attendance: CalendarDays, Assignments: BookOpen, Grades: BookOpen, Announcements: MessageSquare, Messages: MessageSquare, Timetable: CalendarDays, 'AI study buddy': MessageSquare, 'Fee status': BookOpen }
+const icons = { Overview: LayoutDashboard, Analytics: LayoutDashboard, Reports: BookOpen, 'Dataset insights': Database, Students: Users, Teachers: Users, Classes: GraduationCap, Subjects: BookOpen, Attendance: CalendarDays, Assignments: BookOpen, Grades: BookOpen, Announcements: MessageSquare, Messages: MessageSquare, Timetable: CalendarDays, 'AI study buddy': MessageSquare, 'Fee status': BookOpen }
 
 export default function PortalLayout() {
   const { user, logout, notifications, refreshPortalData } = useApp()

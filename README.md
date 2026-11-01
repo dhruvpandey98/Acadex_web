@@ -53,6 +53,18 @@ The seed script is development-only and creates accounts with a shared password.
 
 For a disposable demo that needs the seeded admin, teacher, and parent accounts, set a unique `DEMO_PASSWORD` in Render's environment settings, then run `NODE_ENV=development npm --prefix server run seed` from the Render Shell. This command seeds data without changing the deployed service's `NODE_ENV`; never use the published default demo password.
 
+## Importing the synthetic dataset
+
+The synthetic CSV tables in `server/data/acadex-dataset` are imported into separate `dataset_*` MongoDB collections; the import does not modify the app's normal school records. The admin portal's **Dataset insights** page reads aggregate summaries and the synthetic master-student table only; it does not display the health time-series table.
+
+After deploying the importer code and CSV files, run this once from the Render Shell:
+
+```sh
+ALLOW_DATASET_IMPORT=yes npm --prefix server run import:dataset
+```
+
+The importer requires this explicit production opt-in, upserts rows by stable source keys, and does not delete existing documents. It reports row counts after completion; rerunning the command is safe. Confirm the Render logs show all 12 collections imported, then sign in as an admin and open `/portal/dataset-insights`. Do not run the demo-account seed command as a substitute.
+
 ## Demo data
 
 Set `DEMO_PASSWORD` in `server/.env` before seeding if you want to choose a different development password. Then run:

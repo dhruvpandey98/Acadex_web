@@ -29,3 +29,9 @@ test('school records require authentication', async () => {
   assert.equal(response.status, 401)
   assert.equal((await response.json()).error.message, 'Authentication is required.')
 })
+
+test('dataset insights require authentication', async () => {
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/dataset/insights`)
+  assert.equal(response.status, 401)
+  assert.equal((await response.json()).error.message, 'Authentication is required.')
+})

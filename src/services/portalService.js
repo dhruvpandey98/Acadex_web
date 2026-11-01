@@ -177,6 +177,11 @@ export function recordPayload(kind, record, { isNew, role }) {
 }
 
 export const portalApi = {
+  datasetInsights: ({ page = 1, limit = 10, search = '' } = {}) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+    if (search) params.set('search', search)
+    return apiRequest(`/dataset/insights?${params}`)
+  },
   create: (kind, body) => apiRequest(`/${kind}`, { method: 'POST', body: JSON.stringify(body) }),
   update: (kind, id, body) => apiRequest(`/${kind}/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   remove: (kind, id) => apiRequest(`/${kind}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
