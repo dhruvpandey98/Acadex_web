@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { authenticate } from '../middleware/auth.js'
 import { Assignment, Attendance, Grade, Parent, SchoolClass, Student, Submission, Teacher } from '../models/index.js'
 import { asyncHandler } from '../utils/errors.js'
+import { attendancePercentage } from '../utils/attendance.js'
 
 const router = Router()
 router.use(authenticate)
@@ -11,7 +12,8 @@ async function attendanceStats(match = {}) {
     { $match: match },
     { $group: { _id: null, total: { $sum: 1 }, present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late']] }, 1, 0] } } } },
   ])
-  return { total: stats?.total || 0, percentage: stats?.total ? Math.round(stats.present * 1000 / stats.total) / 10 : 0 }
+  const total = stats?.total || 0
+  return { total, percentage: attendancePercentage(stats?.present || 0, total) }
 }
 
 router.get('/:role', asyncHandler(async (req, res) => {

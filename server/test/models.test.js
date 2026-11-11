@@ -46,6 +46,26 @@ test('grades calculate percentages and reject marks above the total', async () =
   await assert.rejects(invalidGrade.validate(), /Marks obtained cannot exceed total marks/)
 })
 
+test('grades reject missing marks and zero totals without dividing by zero', async () => {
+  const refs = {
+    studentId: new mongoose.Types.ObjectId(),
+    subjectId: new mongoose.Types.ObjectId(),
+    classId: new mongoose.Types.ObjectId(),
+    teacherId: new mongoose.Types.ObjectId(),
+  }
+  const missingMarks = new Grade({ ...refs, examName: 'Quiz', marksObtained: null, totalMarks: 100, percentage: 0, grade: '—' })
+  await assert.rejects(missingMarks.validate(), /marksObtained/)
+  const zeroTotal = new Grade({ ...refs, examName: 'Quiz', marksObtained: 0, totalMarks: 0, percentage: 0, grade: '—' })
+  await assert.rejects(zeroTotal.validate(), /Total marks must be greater than zero/)
+})
+
+test('attendance percentage handles valid records and an empty denominator', async () => {
+  const { attendancePercentage } = await import('../src/utils/attendance.js')
+  assert.equal(attendancePercentage(9, 10), 90)
+  assert.equal(attendancePercentage(0, 0), 0)
+  assert.equal(attendancePercentage(null, 0), 0)
+})
+
 test('timetable entries require a valid end time after the start time', async () => {
   const timetable = new Timetable({
     classId: new mongoose.Types.ObjectId(),

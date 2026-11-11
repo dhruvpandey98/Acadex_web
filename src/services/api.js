@@ -1,14 +1,33 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const REQUEST_TIMEOUT_MS = 60_000
 
 let refreshInFlight
 
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController()
+  let timedOut = false
+  const timeoutId = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, REQUEST_TIMEOUT_MS)
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } catch (error) {
+    const message = timedOut
+      ? 'Acadex took too long to respond. Please try again.'
+      : 'Could not connect to Acadex. Check your connection and try again.'
+    throw new Error(message, { cause: error })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 async function refreshSession() {
   if (!refreshInFlight) {
-    refreshInFlight = fetch(`${API_BASE_URL}/auth/refresh`, {
+    refreshInFlight = fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
-    }).catch((error) => {
-      throw new Error(`Acadex session could not be refreshed: ${error.message}`)
     }).finally(() => {
       refreshInFlight = undefined
     })
@@ -22,16 +41,11 @@ export async function apiRequest(path, options = {}, canRefresh = true) {
     headers.set('Content-Type', 'application/json')
   }
 
-  let response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers,
-      credentials: 'include',
-    })
-  } catch (error) {
-    throw new Error(`Acadex API is unreachable: ${error.message}`)
-  }
+  const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  })
 
   const refreshExempt = ['/auth/login', '/auth/register', '/auth/logout', '/auth/forgot-password', '/auth/reset-password', '/auth/refresh']
   if (response.status === 401 && !refreshExempt.includes(path)) {
@@ -50,7 +64,10 @@ export async function apiRequest(path, options = {}, canRefresh = true) {
   if (response.status === 204) return null
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
-    const error = new Error(payload?.error?.message || `Request failed with status ${response.status}.`)
+    const message = response.status >= 500
+      ? 'Acadex is temporarily unavailable. Please try again in a moment.'
+      : payload?.error?.message || `Request failed with status ${response.status}.`
+    const error = new Error(message)
     error.status = response.status
     error.details = payload?.error?.details
     throw error
