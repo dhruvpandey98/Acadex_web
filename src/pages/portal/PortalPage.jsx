@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, Check, ChevronDown, Clock3, FileText, GraduationCap, MoreHorizontal, Plus, Search, Send, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowRight, ArrowUpRight, BookOpen, Check, ChevronDown, Clock3, FileText, GraduationCap, MoreHorizontal, Plus, Power, Search, Send, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import { Avatar, Button, Card, Modal, StatusBadge } from '../../components/common/UI.jsx'
 import { useApp } from '../../hooks/useApp.js'
 import { assistantService } from '../../services/assistantService.js'
@@ -13,8 +13,11 @@ import LearningHubPage from '../../Pages/portal/LearningHubPage.jsx'
 
 const colors = ['#5549e6', '#18a879', '#f3a650', '#e47b8c']
 const fieldsFor = {
-  students: [['name', 'Student name'], ['email', 'Email address'], ['password', 'Temporary password'], ['admissionNumber', 'Admission number'], ['classId', 'Class']],
-  teachers: [['name', 'Teacher name'], ['email', 'Email address'], ['password', 'Temporary password'], ['employeeId', 'Employee ID'], ['department', 'Department']],
+  students: [['name', 'Student name'], ['email', 'Email address'], ['password', 'Temporary password'], ['admissionNumber', 'Admission number'], ['rollNumber', 'Roll number'], ['classId', 'Class'], ['parentIds', 'Linked parent accounts'], ['phone', 'Phone']],
+  teachers: [['name', 'Teacher name'], ['email', 'Email address'], ['password', 'Temporary password'], ['employeeId', 'Employee ID'], ['department', 'Department'], ['assignedClasses', 'Teaching classes'], ['subjects', 'Subjects'], ['qualification', 'Qualification'], ['phone', 'Phone'], ['status', 'Staff status']],
+  parents: [['name', 'Parent / guardian name'], ['email', 'Email address'], ['password', 'Temporary password'], ['children', 'Linked students'], ['phone', 'Phone'], ['occupation', 'Occupation'], ['address', 'Address']],
+  classes: [['name', 'Grade / class name'], ['section', 'Section'], ['academicYear', 'Academic year'], ['classTeacherId', 'Class teacher'], ['students', 'Enrolled students']],
+  subjects: [['name', 'Subject name'], ['subjectCode', 'Subject code'], ['classId', 'Class'], ['teacherId', 'Subject teacher'], ['description', 'Description']],
   assignments: [['title', 'Assignment title'], ['subjectId', 'Subject'], ['classId', 'Class'], ['teacherId', 'Teacher'], ['dueDate', 'Due date'], ['totalMarks', 'Total marks']],
 }
 function PageHeading({ eyebrow, title, description, action }) {
@@ -25,11 +28,16 @@ function recordForForm(item) {
   const referenceId = (value) => value?._id || value || ''
   return {
     ...item,
+    status: item.profileStatus || item.status,
     classId: referenceId(item.classId),
     subjectId: referenceId(item.subjectId),
     teacherId: referenceId(item.teacherId),
+    classTeacherId: referenceId(item.classTeacherId),
     assignedClasses: (item.assignedClasses || []).map(referenceId),
     subjects: (item.subjects || []).map(referenceId),
+    students: (item.students || []).map(referenceId),
+    children: (item.children || []).map(referenceId),
+    parentIds: (item.parentIds || []).map(referenceId),
   }
 }
 
@@ -47,7 +55,24 @@ function ChartTooltip({ active, payload, label }) {
   return <div className="chart-tooltip"><strong>{label}</strong>{payload.map((entry) => <span key={entry.name}><i style={{ background: entry.color }} />{entry.name}: {entry.value}%</span>)}</div>
 }
 
-function Dashboard({ role, students, assignments, dashboard, user }) {
+function AdminSetupPulse({ students, teachers, classes, parents }) {
+  const checks = [
+    { label: 'Students placed in a class', count: students.filter((student) => !student.classId).length, to: '/portal/students', action: 'Review students' },
+    { label: 'Students linked to a family', count: students.filter((student) => !student.parentIds?.length).length, to: '/portal/parents', action: 'Link guardians' },
+    { label: 'Classes with a class teacher', count: classes.filter((schoolClass) => !schoolClass.classTeacherId).length, to: '/portal/classes', action: 'Assign teachers' },
+    { label: 'Teachers with no class assignment', count: teachers.filter((teacher) => !teacher.assignedClasses?.length).length, to: '/portal/teachers', action: 'Set teaching load' },
+    { label: 'Parent accounts linked to a student', count: parents.filter((parent) => !parent.children?.length).length, to: '/portal/parents', action: 'Connect families' },
+  ]
+  const needsAttention = checks.filter((check) => check.count > 0).length
+  const hasSchoolRecords = students.length + teachers.length + classes.length + parents.length > 0
+  return <Card className="admin-setup-pulse">
+    <div className="admin-setup-heading"><div><p className="page-eyebrow">A MORE CONNECTED SCHOOL</p><h2>Roster readiness</h2><p>Catch setup gaps early: every learner connected to a class, teacher, and family.</p></div><StatusBadge tone={needsAttention ? 'amber' : hasSchoolRecords ? 'green' : 'blue'}>{needsAttention ? `${needsAttention} setup ${needsAttention === 1 ? 'step' : 'steps'}` : hasSchoolRecords ? 'All set' : 'Start here'}</StatusBadge></div>
+    <div className="admin-setup-checks">{checks.map((check) => <Link className="admin-setup-check" to={check.to} key={check.label}><span className={check.count ? 'admin-setup-count is-pending' : 'admin-setup-count'}>{check.count}</span><span><strong>{check.label}</strong><small>{check.count ? check.action : hasSchoolRecords ? 'Coverage looks good' : 'No records yet'}</small></span><ArrowRight size={15} /></Link>)}</div>
+    <div className="admin-setup-actions"><span>Set up your school community</span><Link to="/portal/classes"><BookOpen size={14} /> Classes</Link><Link to="/portal/teachers"><GraduationCap size={14} /> Teachers</Link><Link to="/portal/students"><Users size={14} /> Students</Link><Link to="/portal/parents"><Users size={14} /> Families</Link></div>
+  </Card>
+}
+
+function Dashboard({ role, students, teachers = [], assignments, dashboard, user, classes = [], parents = [] }) {
   const subtitle = { Admin: 'Here’s what’s happening across your school today.', Teacher: 'Here’s your classroom at a glance.', Student: 'A new day is a new chance to do something great.', Parent: 'Here’s the latest from your child’s school day.' }
   const firstName = user.name.split(' ')[0]
   const isLearner = role === 'Student' || role === 'Parent'
@@ -79,7 +104,7 @@ function Dashboard({ role, students, assignments, dashboard, user }) {
   const presentCount = Math.round(recordedCount * attendance.percentage / 100)
   const attendanceBreakdown = [{ name: 'Present', value: presentCount }, { name: 'Not present', value: Math.max(0, recordedCount - presentCount) }]
   const metrics = role === 'Admin'
-    ? [['Total students', dashboard.students, 'Live count', Users, 'in your school'], ['Teaching staff', dashboard.teachers, 'Live count', GraduationCap, 'active profiles'], ['Classes', dashboard.classes, 'Live count', BookOpen, 'school-wide'], ['Attendance today', `${dashboard.attendance.percentage}%`, `${dashboard.attendance.total} records`, Check, 'today']]
+    ? [['Total students', dashboard.students, 'Live count', Users, 'in your school'], ['Teaching staff', dashboard.teachers, 'Live count', GraduationCap, 'active profiles'], ['Classes', dashboard.classes, 'Live count', BookOpen, 'school-wide'], ['Family accounts', dashboard.parents ?? parents.length, 'Linked access', Users, 'parents & guardians']]
     : role === 'Teacher'
       ? [['My students', dashboard.students, 'Live count', Users, `across ${dashboard.classes} classes`], ['Attendance today', `${dashboard.attendance.percentage}%`, `${dashboard.attendance.total} records`, Check, 'for your classes'], ['To review', dashboard.pendingSubmissions, 'Pending', FileText, 'submissions'], ['Assignments', dashboard.assignments, 'Published', BookOpen, 'for your classes']]
       : role === 'Student'
@@ -88,6 +113,7 @@ function Dashboard({ role, students, assignments, dashboard, user }) {
   return <>
     <PageHeading eyebrow="YOUR SCHOOL, AT A GLANCE" title={role === 'Student' ? `Hey, ${firstName}` : `Welcome, ${firstName}`} description={subtitle[role]} action={<Button variant="outline" onClick={() => window.print()}><ArrowDownToLine size={15} /> Export overview</Button>} />
     <div className="metric-grid">{metrics.map(([label, value, change, Icon, detail], i) => <MetricCard key={label} label={label} value={value} change={change} icon={Icon} tone={['purple', 'green', 'amber', 'blue'][i]} detail={detail} />)}</div>
+    {role === 'Admin' && <AdminSetupPulse students={students} teachers={teachers} classes={classes} parents={parents} />}
     <div className="dashboard-main-grid">
       <Card className="chart-card"><div className="card-heading"><div><h2>{isLearner ? 'Learning progress' : 'Attendance trend'}</h2><p>{isLearner ? 'Average grade by subject' : 'Present and absent records over time'}</p></div></div>
         <div className="dashboard-chart">{chartData.length === 0 ? <div className="assistant-empty"><strong>No trend data is available yet.</strong></div> : <ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{ top: 10, right: 4, left: -20, bottom: 0 }}><defs><linearGradient id="purpleArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5a50e9" stopOpacity={0.17} /><stop offset="100%" stopColor="#5a50e9" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke="#eef0f5" strokeDasharray="4 5" vertical={false} /><XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#9098a8', fontSize: 11 }} dy={10} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#9098a8', fontSize: 11 }} domain={[0, 100]} /><Tooltip content={<ChartTooltip />} />{isLearner ? <Area type="monotone" dataKey="score" name="Average score" stroke="#5a50e9" strokeWidth={2.5} fill="url(#purpleArea)" /> : <><Area type="monotone" dataKey="present" name="Present" stroke="#5a50e9" strokeWidth={2.5} fill="url(#purpleArea)" /><Area type="monotone" dataKey="absent" name="Absent" stroke="#1cb58b" strokeWidth={2} fill="transparent" /></>}</AreaChart></ResponsiveContainer>}</div>
@@ -100,12 +126,18 @@ function Dashboard({ role, students, assignments, dashboard, user }) {
   </>
 }
 
-function RecordTable({ kind, records, onEdit, onDelete, onView, query, onQuery, classFilter, onClassFilterChange, statusFilter, onStatusFilterChange, classOptions, statusOptions, canEdit }) {
+function RecordTable({ kind, records, onEdit, onDelete, onView, onToggleActive, query, onQuery, classFilter, onClassFilterChange, statusFilter, onStatusFilterChange, classOptions, statusOptions, canEdit }) {
   const headers = kind === 'students'
     ? ['STUDENT', 'GRADE / CLASS', 'ATTENDANCE', 'ACADEMIC SCORE', 'STATUS', '']
     : kind === 'teachers'
       ? ['TEACHER', 'SUBJECT', 'ASSIGNED CLASSES', 'STATUS', '']
-      : ['ASSIGNMENT', 'SUBJECT / CLASS', 'DUE DATE', 'SUBMISSIONS', 'STATUS', '']
+      : kind === 'parents'
+        ? ['PARENT / GUARDIAN', 'LINKED STUDENTS', 'PHONE', 'ACCOUNT', '']
+        : kind === 'classes'
+          ? ['CLASS', 'ACADEMIC YEAR', 'CLASS TEACHER', 'ENROLLMENT', '']
+          : kind === 'subjects'
+            ? ['SUBJECT', 'CODE', 'CLASS', 'TEACHER', '']
+            : ['ASSIGNMENT', 'SUBJECT / CLASS', 'DUE DATE', 'SUBMISSIONS', 'STATUS', '']
 
   return (
     <Card className="table-card">
@@ -122,11 +154,14 @@ function RecordTable({ kind, records, onEdit, onDelete, onView, query, onQuery, 
           <tbody>
             {records.length === 0 ? <tr><td className="empty-row" colSpan={headers.length}>No records found. Try adjusting your search.</td></tr> : records.map((item) => (
               <tr key={item.id}>
-                <td><button className="person-cell" onClick={() => onView(item)}><Avatar name={item.name || item.title} color={item.color || 'violet'} size="sm" /><span><strong>{item.name || item.title}</strong><small>{item.email || (kind === 'students' ? item.className : `${item.className} - ${item.total} students`)}</small></span></button></td>
+                <td><button className="person-cell" onClick={() => onView(item)}><Avatar name={item.name || item.title} color={item.color || 'violet'} size="sm" /><span><strong>{kind === 'classes' ? item.className : item.name || item.title}</strong><small>{kind === 'classes' ? `${item.studentCount} learners` : item.email || (kind === 'students' ? item.className : kind === 'parents' ? item.occupation || 'Family account' : kind === 'subjects' ? item.description || 'Class subject' : `${item.className} - ${item.total} students`)}</small></span></button></td>
                 {kind === 'students' && <><td><strong className="table-primary">{item.grade}</strong><small className="table-secondary">{item.className}</small></td><td><span className="table-number">{item.attendance === '—' ? '—' : `${item.attendance}%`}</span></td><td><span className="table-number">{item.score === '—' ? '—' : `${item.score}%`}</span></td><td><StatusBadge tone={item.status === 'Active' ? 'green' : 'amber'}>{item.status}</StatusBadge></td></>}
                 {kind === 'teachers' && <><td><span className="table-primary">{item.subject}</span></td><td><span className="table-primary">{item.classes}</span></td><td><StatusBadge tone={item.status === 'Active' ? 'green' : 'amber'}>{item.status}</StatusBadge></td></>}
+                {kind === 'parents' && <><td><span className="table-primary">{item.childrenCount} linked {item.childrenCount === 1 ? 'student' : 'students'}</span><small className="table-secondary">{item.childrenNames || 'No student linked yet'}</small></td><td>{item.phone || '—'}</td><td><StatusBadge tone={item.accountActive ? 'green' : 'amber'}>{item.accountActive ? 'Access active' : 'Access paused'}</StatusBadge></td></>}
+                {kind === 'classes' && <><td>{item.academicYear}</td><td>{item.teacherName}</td><td><span className="table-number">{item.studentCount} students</span></td></>}
+                {kind === 'subjects' && <><td>{item.subjectCode}</td><td>{item.className}</td><td>{item.teacherName}</td></>}
                 {kind === 'assignments' && <><td><span className="table-primary">{item.subject}</span><small className="table-secondary">{item.className}</small></td><td><span className="table-primary">{new Date(`${item.due}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></td><td><span className="table-number">{item.submitted} / {item.total}</span></td><td><StatusBadge tone={item.status === 'Reviewing' ? 'blue' : item.status === 'Not started' ? 'amber' : 'green'}>{item.status}</StatusBadge></td></>}
-                <td><div className="row-actions"><button className="icon-button" aria-label="View details" onClick={() => onView(item)}><BookOpen size={15} /></button><button className="icon-button" aria-label={canEdit ? 'Edit' : 'View profile'} onClick={() => onEdit(item)}><MoreHorizontal size={16} /></button>{canEdit && <button className="icon-button delete-icon" aria-label="Delete" onClick={() => onDelete(item)}><X size={15} /></button>}</div></td>
+                <td><div className="row-actions"><button className="icon-button" aria-label="View details" onClick={() => onView(item)}><BookOpen size={15} /></button><button className="icon-button" aria-label={canEdit ? 'Edit' : 'View profile'} onClick={() => onEdit(item)}><MoreHorizontal size={16} /></button>{canEdit && ['students', 'teachers', 'parents'].includes(kind) && <button className="icon-button" aria-label={`${item.accountActive ? 'Pause' : 'Restore'} ${kind === 'students' ? 'student' : kind === 'teachers' ? 'teacher' : 'parent'} access`} onClick={() => onToggleActive(item)}><Power size={15} /></button>}{canEdit && <button className="icon-button delete-icon" aria-label="Delete" onClick={() => onDelete(item)}><X size={15} /></button>}</div></td>
               </tr>
             ))}
           </tbody>
@@ -136,6 +171,97 @@ function RecordTable({ kind, records, onEdit, onDelete, onView, query, onQuery, 
     </Card>
   )
 }
+
+function AdminRecordFields({ section, fields, record, setRecord, selectedRecord, classes, teachers, subjects, students, parents }) {
+  const multiSelectFields = ['assignedClasses', 'subjects', 'students', 'parentIds', 'children']
+  const requiredFields = new Set([
+    'name', 'email', 'password', 'admissionNumber', 'employeeId', 'section', 'academicYear', 'subjectCode',
+  ])
+  const optionsFor = (field) => {
+    if (['classId', 'assignedClasses'].includes(field)) return classes.map((item) => [item._id || item.id, optionLabel(item)])
+    if (field === 'classTeacherId') return teachers.map((item) => [item._id || item.id, item.name])
+    if (field === 'teacherId') {
+      const availableTeachers = section === 'subjects'
+        ? teachers.filter((teacher) => teacher.assignedClasses?.some((schoolClass) => String(schoolClass?._id || schoolClass) === String(record.classId)))
+        : teachers
+      return availableTeachers.map((item) => [item._id || item.id, item.name])
+    }
+    if (field === 'subjects') {
+      const assignedClasses = new Set((record.assignedClasses || []).map((value) => String(value?._id || value)))
+      const selectedSubjects = new Set((record.subjects || []).map((value) => String(value?._id || value)))
+      return subjects.filter((item) => assignedClasses.has(String(item.classId?._id || item.classId)) || selectedSubjects.has(String(item._id || item.id)))
+        .map((item) => [item._id || item.id, `${item.name} · ${item.className || 'Subject'}`])
+    }
+    if (field === 'students') return students.map((item) => [item._id || item.id, `${item.name} · ${item.className || 'Unassigned'}`])
+    if (field === 'children') return students.map((item) => [item._id || item.id, `${item.name} · ${item.className || 'Unassigned'}`])
+    if (field === 'parentIds') return parents.map((item) => [item._id || item.id, item.name])
+    return []
+  }
+  const update = (field, value) => setRecord((current) => ({ ...current, [field]: value }))
+
+  return fields
+    .filter(([field]) => !(field === 'password' && selectedRecord))
+    .map(([field, label]) => {
+      if (multiSelectFields.includes(field)) {
+        const options = optionsFor(field)
+        const selected = new Set((record[field] || []).map((value) => String(value?._id || value)))
+        return <fieldset className="admin-multi-field" key={field}>
+          <legend>{label}</legend>
+          {options.length ? <div className="admin-multi-options">{options.map(([value, name]) => <label className="admin-multi-option" key={value}>
+            <input type="checkbox" checked={selected.has(String(value))} onChange={(event) => {
+              const next = new Set(selected)
+              if (event.target.checked) next.add(String(value))
+              else next.delete(String(value))
+              if (field === 'assignedClasses') {
+                const nextSubjectIds = new Set(subjects
+                  .filter((subject) => next.has(String(subject.classId?._id || subject.classId)))
+                  .map((subject) => String(subject._id || subject.id)))
+                setRecord((current) => ({
+                  ...current,
+                  assignedClasses: [...next],
+                  subjects: (current.subjects || []).filter((subjectId) => nextSubjectIds.has(String(subjectId?._id || subjectId))),
+                }))
+              } else {
+                update(field, [...next])
+              }
+            }} />
+            <span>{name}</span>
+          </label>)}</div> : <p className="admin-field-hint">{field === 'subjects' ? 'Assign a teaching class first to choose its subjects.' : 'Add the related records first to link them here.'}</p>}
+          <small className="admin-field-hint">{selected.size} selected</small>
+        </fieldset>
+      }
+      if (field === 'classId' || field === 'classTeacherId' || field === 'teacherId' || field === 'subjectId') {
+        const options = field === 'classId'
+          ? optionsFor('classId')
+          : field === 'subjectId'
+            ? subjects.filter((item) => String(item.classId?._id || item.classId) === String(record.classId)).map((item) => [item._id || item.id, item.name])
+            : optionsFor(field)
+        return <label key={field}>{label}
+            <select value={record[field]?._id || record[field] || ''} required={(field === 'classId' && section === 'subjects') || (field === 'subjectId' && section === 'assignments')} onChange={(event) => {
+              if (field === 'classId' && section === 'assignments') setRecord((current) => ({ ...current, classId: event.target.value, subjectId: '' }))
+              else if (field === 'classId' && section === 'subjects') setRecord((current) => ({ ...current, classId: event.target.value, teacherId: '' }))
+              else update(field, event.target.value)
+            }}>
+            <option value="">{field === 'classId' && section === 'students' ? 'Not assigned yet' : `Choose ${label.toLowerCase()}`}</option>
+            {options.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+          </select>
+        </label>
+      }
+      if (field === 'status') {
+        const statusOptions = section === 'teachers' ? [['active', 'Active'], ['on_leave', 'On leave'], ['inactive', 'Inactive']] : [['active', 'Active'], ['inactive', 'Inactive'], ['graduated', 'Graduated'], ['transferred', 'Transferred']]
+        return <label key={field}>{label}<select value={record.status || 'active'} onChange={(event) => update('status', event.target.value)}>{statusOptions.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>
+      }
+      if (['description', 'address'].includes(field)) {
+        return <label key={field}>{label}<textarea value={record[field] || ''} onChange={(event) => update(field, event.target.value)} maxLength={field === 'address' ? 500 : 2000} /></label>
+      }
+      const inputType = field === 'email' ? 'email' : field === 'password' ? 'password' : field === 'dueDate' ? 'date' : field === 'totalMarks' ? 'number' : 'text'
+      const required = requiredFields.has(field) || (field === 'classId' && (section === 'subjects' || section === 'assignments')) || (field === 'subjectId' && section === 'assignments')
+      return <label key={field}>{label}
+        <input type={inputType} min={field === 'totalMarks' ? '1' : undefined} value={record[field] ?? ''} onChange={(event) => update(field, event.target.value)} required={required} autoComplete={field === 'password' ? 'new-password' : undefined} />
+      </label>
+    })
+}
+
 function AttendancePage({ role, students, attendance, onStatusChange }) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const isFamily = role === 'Student' || role === 'Parent'
@@ -579,7 +705,7 @@ export default function PortalPage() {
   const { section = 'overview' } = useParams()
   const [searchParams] = useSearchParams()
   const globalQuery = searchParams.get('search') || ''
-  const { user, students, teachers, assignments, submissions, attendance, attendanceRecords, classes, subjects, grades, fees, timetable, dashboard, portalDataLoading, portalDataError, refreshPortalData, announcements } = useApp()
+  const { user, students, teachers, parents, assignments, submissions, attendance, attendanceRecords, classes, subjects, grades, fees, timetable, dashboard, portalDataLoading, portalDataError, refreshPortalData, announcements } = useApp()
   const [query, setQuery] = useState(globalQuery)
   const [classFilter, setClassFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -592,23 +718,41 @@ export default function PortalPage() {
   const role = user.role
   if (section === 'assignments') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><AssignmentsPage user={user} /></motion.div>
   if (section === 'learning-hub') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><LearningHubPage user={user} /></motion.div>
-  const data = section === 'students' ? students : section === 'teachers' ? teachers : section === 'assignments' ? assignments : []
-  const classOptions = [...new Set(data.map((item) => section === 'teachers' ? item.subject : item.className).filter(Boolean))]
+  const data = ({
+    students,
+    teachers,
+    parents,
+    classes,
+    subjects,
+    assignments,
+  })[section] || []
+  const classOptions = [...new Set(data.map((item) => (
+    section === 'teachers' ? item.subject
+      : section === 'subjects' ? item.className
+        : section === 'classes' ? item.academicYear
+          : item.className
+  )).filter(Boolean))]
   const statusOptions = [...new Set(data.map((item) => item.status).filter(Boolean))]
   const shown = data.filter((item) => {
-    const matchesSearch = `${item.name || item.title} ${item.email || ''} ${item.subject || ''} ${item.className || ''}`.toLowerCase().includes(query.toLowerCase())
-    const filterValue = section === 'teachers' ? item.subject : item.className
+    const matchesSearch = `${item.name || item.title} ${item.email || ''} ${item.subject || ''} ${item.className || ''} ${item.childrenNames || ''} ${item.teacherName || ''}`.toLowerCase().includes(query.toLowerCase())
+    const filterValue = section === 'teachers' ? item.subject : section === 'classes' ? item.academicYear : item.className
     return matchesSearch && (classFilter === 'All' || filterValue === classFilter) && (statusFilter === 'All' || item.status === statusFilter)
   })
   const canEdit = role === 'Admin' || (role === 'Teacher' && section === 'assignments')
-  const singular = section === 'students' ? 'student' : section === 'teachers' ? 'teacher' : 'assignment'
+  const singular = ({ students: 'student', teachers: 'teacher', parents: 'parent account', classes: 'class', subjects: 'subject', assignments: 'assignment' })[section] || 'record'
 
   function openCreate() {
-    setRecord(section === 'assignments'
-      ? { dueDate: new Date().toISOString().slice(0, 10), classId: classes[0]?._id, subjectId: subjects[0]?._id, totalMarks: 100 }
-      : section === 'teachers'
-        ? { name: '', email: '', password: '', employeeId: '', department: '' }
-        : { name: '', email: '', password: '', admissionNumber: '', classId: classes[0]?._id })
+    const now = new Date()
+    const defaultAcademicYear = `${now.getFullYear()}-${now.getFullYear() + 1}`
+    const defaults = {
+      students: { name: '', email: '', password: '', admissionNumber: '', rollNumber: '', classId: '', parentIds: [], phone: '' },
+      teachers: { name: '', email: '', password: '', employeeId: '', department: '', assignedClasses: [], subjects: [], qualification: '', phone: '', status: 'active' },
+      parents: { name: '', email: '', password: '', children: [], phone: '', occupation: '', address: '' },
+      classes: { name: '', section: '', academicYear: defaultAcademicYear, classTeacherId: '', students: [] },
+      subjects: { name: '', subjectCode: '', classId: classes[0]?._id || '', teacherId: '', description: '' },
+      assignments: { dueDate: new Date().toISOString().slice(0, 10), classId: classes[0]?._id, subjectId: subjects[0]?._id, totalMarks: 100 },
+    }
+    setRecord(defaults[section] || {})
     setActionError('')
     setSelectedRecord(null)
     setModal('edit')
@@ -635,6 +779,24 @@ export default function PortalPage() {
     setActionError('')
     try {
       await portalApi.remove(section, item.id)
+      await refreshPortalData()
+    } catch (error) {
+      setActionError(error.message)
+    }
+  }
+
+  async function toggleAccountAccess(item) {
+    const userId = item.userId?._id || item.userId
+    if (!userId) {
+      setActionError('This profile is not linked to a sign-in account.')
+      return
+    }
+    const isActive = !item.accountActive
+    const action = isActive ? 'restore access for' : 'pause access for'
+    if (!window.confirm(`Are you sure you want to ${action} ${item.name}?`)) return
+    setActionError('')
+    try {
+      await portalApi.setAccountStatus(userId, isActive)
       await refreshPortalData()
     } catch (error) {
       setActionError(error.message)
@@ -694,7 +856,12 @@ export default function PortalPage() {
   }
 
   function exportRows() {
-    const fields = section === 'students' ? ['name', 'email', 'grade', 'className', 'attendance', 'score'] : section === 'teachers' ? ['name', 'email', 'subject', 'classes', 'status'] : ['title', 'subject', 'className', 'due', 'submitted', 'total', 'status']
+    const fields = section === 'students' ? ['name', 'email', 'grade', 'className', 'attendance', 'score']
+      : section === 'teachers' ? ['name', 'email', 'subject', 'classes', 'status']
+        : section === 'parents' ? ['name', 'email', 'childrenNames', 'phone', 'status']
+          : section === 'classes' ? ['className', 'academicYear', 'teacherName', 'studentCount']
+            : section === 'subjects' ? ['name', 'subjectCode', 'className', 'teacherName']
+              : ['title', 'subject', 'className', 'due', 'submitted', 'total', 'status']
     const csv = [fields.join(','), ...shown.map((item) => fields.map((field) => `"${String(item[field] ?? '').replaceAll('"', '""')}"`).join(','))].join('\n')
     const link = document.createElement('a')
     link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
@@ -706,6 +873,9 @@ export default function PortalPage() {
   const headingInfo = {
     students: ['THE PEOPLE AT THE HEART OF IT', 'Students', 'A little more about the learners who make your school what it is.'],
     teachers: ['THE PEOPLE WHO MAKE IT HAPPEN', 'Teaching staff', 'The brilliant people behind every great school day.'],
+    parents: ['FAMILY, IN THE LOOP', 'Parents & guardians', 'Connect each family to the right learners and pause or restore account access when needed.'],
+    classes: ['BUILD YOUR SCHOOL STRUCTURE', 'Classes & cohorts', 'Create classes, assign a class teacher, and maintain an accurate student roster.'],
+    subjects: ['MAKE EVERY CLASS TEACHABLE', 'Subjects', 'Attach subjects to classes and give teachers the correct teaching access.'],
     assignments: ['WORK THAT MOVES LEARNING FORWARD', role === 'Student' || role === 'Parent' ? 'Assignments' : 'Assignments', 'A clear view of what’s next, what’s done, and what needs a little attention.'],
     grades: ['PROGRESS, NOT JUST NUMBERS', role === 'Student' || role === 'Parent' ? 'Your grades' : 'Grades & performance', 'Every result is a moment in a much bigger learning story.'],
   }
@@ -717,15 +887,16 @@ export default function PortalPage() {
     return <Card className="table-card"><h2>School data is unavailable</h2><p role="alert">{portalDataError}</p><Button onClick={refreshPortalData}>Retry</Button></Card>
   }
 
-  if (section === 'overview') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><Dashboard role={role} students={students} assignments={assignments} dashboard={dashboard} user={user} /></motion.div>
+  if (['parents'].includes(section) && role !== 'Admin') return <Card className="learning-empty"><h2>Admin access required</h2><p>Family account management is available to school administrators.</p></Card>
+  if (section === 'overview') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><Dashboard role={role} students={students} teachers={teachers} parents={parents} classes={classes} assignments={assignments} dashboard={dashboard} user={user} /></motion.div>
   if (section === 'attendance') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>{actionError && <p className="auth-notice" role="alert">{actionError}</p>}<AttendancePage role={role} students={students} attendance={attendance} onStatusChange={changeAttendance} /></motion.div>
   if (section === 'messages') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><MessagesPage user={user} teachers={teachers} students={students} parents={[]} /></motion.div>
   if (section === 'assistant') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><AssistantPage user={user} /></motion.div>
-  if (['students', 'teachers', 'assignments'].includes(section)) return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+  if (['students', 'teachers', 'parents', 'classes', 'subjects', 'assignments'].includes(section)) return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
     <PageHeading eyebrow={headingInfo[section][0]} title={headingInfo[section][1]} description={headingInfo[section][2]} action={<div className="heading-actions"><Button variant="outline" onClick={exportRows}><ArrowDownToLine size={15} /> Export</Button>{canEdit && <Button onClick={openCreate}><UserPlus size={15} /> Add {singular}</Button>}</div>} />
     {actionError && <p className="auth-notice" role="alert">{actionError}</p>}
     <div className="table-summary-row"><span><strong>{data.length}</strong> {section} in your school</span><span className="table-summary-note"><i /> Live school data</span></div>
-    <RecordTable kind={section} records={shown} query={query} onQuery={setQuery} classFilter={classFilter} onClassFilterChange={setClassFilter} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} classOptions={classOptions} statusOptions={statusOptions} canEdit={canEdit} onView={(item) => { setSelectedRecord(item); setModal('view') }} onEdit={(item) => {
+    <RecordTable kind={section} records={shown} query={query} onQuery={setQuery} classFilter={classFilter} onClassFilterChange={setClassFilter} statusFilter={statusFilter} onStatusFilterChange={setStatusFilter} classOptions={classOptions} statusOptions={statusOptions} canEdit={canEdit} onToggleActive={toggleAccountAccess} onView={(item) => { setSelectedRecord(item); setModal('view') }} onEdit={(item) => {
       if (!canEdit) { setSelectedRecord(item); setModal('view'); return }
       setSelectedRecord(item)
       setRecord(recordForForm(item))
@@ -734,12 +905,8 @@ export default function PortalPage() {
     }} onDelete={removeRecord} />
     <Modal open={modal === 'edit'} onClose={() => setModal(null)} title={`${selectedRecord ? 'Edit' : 'Add'} ${singular}`} description={`Keep your ${singular} details up to date.`}>
       <form className="record-form" onSubmit={saveRecord}>
-        {(fieldsFor[section] || []).filter(([field]) => !(field === 'password' && selectedRecord) && !(field === 'teacherId' && role !== 'Admin')).map(([field, label]) => <label key={field}>{label}
-          {field === 'classId' ? <select value={record[field] || ''} onChange={(event) => setRecord({ ...record, classId: event.target.value, subjectId: '' })} required={section === 'assignments'}><option value="">Unassigned</option>{classes.map((item) => <option key={item._id} value={item._id}>{optionLabel(item)}</option>)}</select>
-            : field === 'subjectId' ? <select value={record[field] || ''} onChange={(event) => setRecord({ ...record, [field]: event.target.value })} required><option value="">Choose a subject</option>{subjects.filter((item) => String(item.classId?._id || item.classId) === String(record.classId)).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>
-              : field === 'teacherId' ? <select value={record[field] || ''} onChange={(event) => setRecord({ ...record, [field]: event.target.value })} required={section === 'assignments' && role === 'Admin'}><option value="">Choose a teacher</option>{teachers.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>
-                : <input type={field === 'dueDate' ? 'date' : field === 'email' ? 'email' : field === 'password' ? 'password' : field === 'totalMarks' ? 'number' : 'text'} min={field === 'totalMarks' ? '1' : undefined} value={record[field] ?? ''} onChange={(event) => setRecord({ ...record, [field]: event.target.value })} required={field !== 'department'} autoComplete={field === 'password' ? 'new-password' : undefined} />}
-        </label>)}
+        <AdminRecordFields section={section} fields={fieldsFor[section] || []} record={record} setRecord={setRecord} selectedRecord={selectedRecord} classes={classes} teachers={teachers} subjects={subjects} students={students} parents={parents} />
+        {!selectedRecord && ['students', 'teachers', 'parents'].includes(section) && <p className="admin-account-note">This also creates a secure {section === 'students' ? 'student' : section === 'teachers' ? 'teacher' : 'parent'} sign-in and opens the matching role dashboard.</p>}
         {actionError && <p className="auth-notice" role="alert">{actionError}</p>}
         <div className="modal-actions"><Button variant="outline" type="button" onClick={() => setModal(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving…' : selectedRecord ? 'Save changes' : `Add ${singular}`}</Button></div>
       </form>

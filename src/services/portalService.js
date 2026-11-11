@@ -34,7 +34,8 @@ function mapStudent(record, attendanceRecords, gradeRecords) {
     className: displayClass(record.classId),
     attendance: attendance.length ? Math.round(present * 100 / attendance.length) : '—',
     score: studentGrades.length ? Math.round(studentGrades.reduce((sum, item) => sum + item.percentage, 0) / studentGrades.length) : '—',
-    status: record.status === 'active' ? 'Active' : record.status,
+    status: record.userId?.isActive === false ? 'Account paused' : record.status === 'active' ? 'Active' : record.status,
+    accountActive: record.userId?.isActive !== false,
     color: 'violet',
   }
 }
@@ -45,7 +46,49 @@ function mapTeacher(record) {
     id: record._id,
     subject: (record.subjects || []).map((subject) => subject.name).filter(Boolean).join(', ') || record.department || '—',
     classes: (record.assignedClasses || []).map(displayClass).filter(Boolean).join(', ') || '—',
-    status: record.status === 'active' ? 'Active' : record.status === 'on_leave' ? 'On leave' : record.status,
+    profileStatus: record.status,
+    status: record.userId?.isActive === false ? 'Account paused' : record.status === 'active' ? 'Active' : record.status === 'on_leave' ? 'On leave' : record.status,
+    accountActive: record.userId?.isActive !== false,
+    color: 'blue',
+  }
+}
+
+function mapParent(record) {
+  return {
+    ...record,
+    id: record._id,
+    childrenCount: record.children?.length || 0,
+    childrenNames: (record.children || []).map((student) => student.name).filter(Boolean).join(', '),
+    status: record.userId?.isActive === false ? 'Account paused' : 'Active',
+    accountActive: record.userId?.isActive !== false,
+    color: 'amber',
+  }
+}
+
+function mapClass(record, studentRecords) {
+  const roster = studentRecords.filter((student) =>
+    String(student.classId?._id || student.classId) === String(record._id),
+  )
+  return {
+    ...record,
+    id: record._id,
+    students: roster.map((student) => student._id),
+    className: displayClass(record),
+    teacherName: record.classTeacherId?.name || 'Unassigned',
+    studentCount: roster.length,
+    subjectCount: record.subjects?.length || 0,
+    status: 'Active',
+    color: 'green',
+  }
+}
+
+function mapSubject(record) {
+  return {
+    ...record,
+    id: record._id,
+    className: displayClass(record.classId),
+    teacherName: record.teacherId?.name || 'Unassigned',
+    status: 'Active',
     color: 'blue',
   }
 }
@@ -126,18 +169,18 @@ export async function fetchPortalData(user) {
   return {
     students: records.students.map((record) => mapStudent(record, records.attendance, records.grades)),
     teachers: records.teachers.map(mapTeacher),
+    parents: (records.parents || []).map(mapParent),
+    classes: records.classes.map((record) => mapClass(record, records.students)),
+    subjects: records.subjects.map(mapSubject),
     assignments,
     submissions,
     announcements: records.announcements.map(mapAnnouncement),
     notifications: records.notifications.map(mapNotification),
     attendance,
     attendanceRecords: records.attendance,
-    classes: records.classes,
-    subjects: records.subjects,
     grades: records.grades,
     fees: records.fees || [],
     timetable: records.timetable,
-    parents: records.parents || [],
     dashboard: records.dashboard,
   }
 }
@@ -148,8 +191,11 @@ export function recordPayload(kind, record, { isNew, role }) {
       name: record.name,
       email: record.email,
       ...(isNew ? { password: record.password, admissionNumber: record.admissionNumber } : {}),
+      ...(record.phone !== undefined ? { phone: record.phone } : {}),
       classId: record.classId || null,
-      section: record.section || '',
+      ...(record.section !== undefined ? { section: record.section } : {}),
+      rollNumber: record.rollNumber || '',
+      parentIds: record.parentIds || [],
       ...(isNew ? { status: 'active' } : {}),
     }
   }
@@ -159,8 +205,43 @@ export function recordPayload(kind, record, { isNew, role }) {
       email: record.email,
       ...(isNew ? { password: record.password, employeeId: record.employeeId } : {}),
       department: record.department || '',
-      ...(role === 'Admin' ? { assignedClasses: record.assignedClasses || [], subjects: record.subjects || [] } : {}),
+      ...(role === 'Admin' ? {
+        assignedClasses: record.assignedClasses || [],
+        subjects: record.subjects || [],
+        phone: record.phone || '',
+        qualification: record.qualification || '',
+        status: record.status || 'active',
+      } : {}),
       ...(isNew ? { status: 'active' } : {}),
+    }
+  }
+  if (kind === 'parents') {
+    return {
+      name: record.name,
+      email: record.email,
+      ...(isNew ? { password: record.password } : {}),
+      phone: record.phone || '',
+      occupation: record.occupation || '',
+      address: record.address || '',
+      children: record.children || [],
+    }
+  }
+  if (kind === 'classes') {
+    return {
+      name: record.name,
+      section: record.section,
+      academicYear: record.academicYear,
+      classTeacherId: record.classTeacherId || null,
+      students: record.students || [],
+    }
+  }
+  if (kind === 'subjects') {
+    return {
+      name: record.name,
+      subjectCode: record.subjectCode,
+      classId: record.classId,
+      teacherId: record.teacherId || null,
+      description: record.description || '',
     }
   }
   if (kind === 'assignments') {
@@ -179,6 +260,10 @@ export function recordPayload(kind, record, { isNew, role }) {
 }
 
 export const portalApi = {
+  setAccountStatus: (userId, isActive) => apiRequest(`/users/${encodeURIComponent(userId)}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  }),
   learningHub: () => apiRequest('/learning-hub'),
   generateWeeklyPlan: () => apiRequest('/learning-hub/plan', { method: 'POST' }),
   generateWeeklyDigest: () => apiRequest('/learning-hub/digest', { method: 'POST' }),

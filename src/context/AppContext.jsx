@@ -9,6 +9,7 @@ export function AppProvider({ children }) {
   const [authError, setAuthError] = useState('')
   const [students, setStudents] = useState([])
   const [teachers, setTeachers] = useState([])
+  const [parents, setParents] = useState([])
   const [assignments, setAssignments] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [announcements, setAnnouncements] = useState([])
@@ -56,6 +57,7 @@ export function AppProvider({ children }) {
       const data = await fetchPortalData(user)
       setStudents(data.students)
       setTeachers(data.teachers)
+      setParents(data.parents)
       setAssignments(data.assignments)
       setSubmissions(data.submissions)
       setAnnouncements(data.announcements)
@@ -84,6 +86,7 @@ export function AppProvider({ children }) {
     }
     setStudents([])
     setTeachers([])
+    setParents([])
     setAssignments([])
     setSubmissions([])
     setAnnouncements([])
@@ -132,6 +135,8 @@ export function AppProvider({ children }) {
     setStudents,
     teachers,
     setTeachers,
+    parents,
+    setParents,
     assignments,
     setAssignments,
     submissions,
@@ -152,7 +157,7 @@ export function AppProvider({ children }) {
     portalDataLoading,
     portalDataError,
     refreshPortalData,
-  }), [user, authLoading, authError, students, teachers, assignments, submissions, announcements, notifications, attendance, attendanceRecords, classes, subjects, grades, fees, timetable, dashboard, portalDataLoading, portalDataError, refreshPortalData])
+  }), [user, authLoading, authError, students, teachers, parents, assignments, submissions, announcements, notifications, attendance, attendanceRecords, classes, subjects, grades, fees, timetable, dashboard, portalDataLoading, portalDataError, refreshPortalData])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

@@ -68,7 +68,7 @@ export const demoChats = [
 export const navigationByRole = {
   Admin: [
     { label: 'Overview', items: [['Overview', 'overview'], ['Analytics', 'analytics'], ['Reports', 'reports'], ['Dataset insights', 'dataset-insights']] },
-    { label: 'School', items: [['Students', 'students'], ['Teachers', 'teachers'], ['Classes', 'classes'], ['Subjects', 'subjects']] },
+    { label: 'School', items: [['Students', 'students'], ['Teachers', 'teachers'], ['Parents', 'parents'], ['Classes', 'classes'], ['Subjects', 'subjects']] },
     { label: 'Learning', items: [['Attendance', 'attendance'], ['Assignments', 'assignments'], ['Grades', 'grades']] },
     { label: 'Communication', items: [['Announcements', 'announcements'], ['Messages', 'messages']] },
   ],

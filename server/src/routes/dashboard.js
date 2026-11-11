@@ -22,9 +22,10 @@ router.get('/:role', asyncHandler(async (req, res) => {
   let data
 
   if (role === 'admin' && user.role === 'admin') {
-    const [students, teachers, classes, attendance, enrollment, performance, attendanceTrend, gradeDistribution] = await Promise.all([
+    const [students, teachers, parents, classes, attendance, enrollment, performance, attendanceTrend, gradeDistribution] = await Promise.all([
       Student.countDocuments(),
       Teacher.countDocuments(),
+      Parent.countDocuments(),
       SchoolClass.countDocuments(),
       attendanceStats({ date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }),
       Student.aggregate([{ $group: { _id: { $dateToString: { format: '%Y-%m', date: '$admissionDate' } }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
@@ -32,7 +33,7 @@ router.get('/:role', asyncHandler(async (req, res) => {
       Attendance.aggregate([{ $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } }, present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late']] }, 1, 0] } }, total: { $sum: 1 } } }, { $sort: { _id: -1 } }, { $limit: 30 }, { $sort: { _id: 1 } }, { $project: { _id: 0, date: '$_id', present: { $round: [{ $multiply: [{ $divide: ['$present', '$total'] }, 100] }, 1] }, absent: { $subtract: [100, { $round: [{ $multiply: [{ $divide: ['$present', '$total'] }, 100] }, 1] }] } } }]),
       Grade.aggregate([{ $bucket: { groupBy: '$percentage', boundaries: [0, 40, 50, 60, 70, 80, 90, 101], default: 'ungraded', output: { count: { $sum: 1 } } } }]),
     ])
-    data = { students, teachers, classes, attendance, enrollment, performance, attendanceTrend, gradeDistribution }
+    data = { students, teachers, parents, classes, attendance, enrollment, performance, attendanceTrend, gradeDistribution }
   } else if (role === 'teacher' && user.role === 'teacher') {
     const teacher = await Teacher.findOne({ userId: user.id }).select('_id assignedClasses')
     const classIds = teacher?.assignedClasses || []

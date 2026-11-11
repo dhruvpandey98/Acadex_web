@@ -324,6 +324,42 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .assignment-student-card { padding: 13px; }
 }
 
+.record-form select, .record-form textarea { width: 100%; padding: 9px 10px; border: 1px solid #e5e8ef; border-radius: 6px; outline: 0; color: #3e485c; background: #fff; font: inherit; font-size: 9px; }
+.record-form select:focus, .record-form textarea:focus { border-color: #928aeb; box-shadow: 0 0 0 3px #f2f1ff; }
+.record-form select[multiple] { min-height: 78px; padding: 5px; }
+.record-form select[multiple] option { padding: 5px 7px; border-radius: 4px; }
+.record-form select[multiple] option:checked { color: #5146df; background: #f1f0ff; }
+.record-form textarea { min-height: 82px; resize: vertical; }
+.record-form .admin-multi-field { min-width: 0; padding: 0; margin: 0; border: 0; }
+.admin-multi-field legend { padding: 0 0 6px; color: #5b6578; font-size: 9px; font-weight: 700; }
+.admin-multi-options { display: grid; max-height: 132px; overflow: auto; padding: 5px; border: 1px solid #e5e8ef; border-radius: 6px; }
+.record-form .admin-multi-option { display: flex; grid-template-columns: auto 1fr; align-items: center; gap: 8px; padding: 5px; border-radius: 4px; font-size: 8px; font-weight: 500; cursor: pointer; }
+.record-form .admin-multi-option:hover { background: #f8f7ff; }
+.record-form .admin-multi-option input { width: 14px; height: 14px; flex: 0 0 14px; padding: 0; margin: 0; accent-color: #5b50d7; }
+.admin-multi-option span { overflow-wrap: anywhere; }
+.admin-field-hint { color: #9299a8; font-size: 8px; font-weight: 400; line-height: 1.4; }
+.admin-account-note { padding: 10px 12px; margin: 0; border: 1px solid #e4e1ff; border-radius: 7px; color: #5b5694; background: #f7f6ff; font-size: 9px; line-height: 1.5; }
+.admin-setup-pulse { padding: 18px; margin-bottom: 16px; }
+.admin-setup-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.admin-setup-heading h2 { margin: 0; color: #34384c; font-size: 17px; }
+.admin-setup-heading p:not(.page-eyebrow) { margin: 5px 0 0; color: #82889a; font-size: 10px; line-height: 1.5; }
+.admin-setup-heading .page-eyebrow { margin: 0 0 5px; }
+.admin-setup-checks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 15px; }
+.admin-setup-check { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 9px; border: 1px solid #eef0f5; border-radius: 8px; color: inherit; text-decoration: none; transition: border-color .15s, background .15s; }
+.admin-setup-check:hover { border-color: #dcd9ff; background: #fbfaff; }
+.admin-setup-check > span:nth-child(2) { display: grid; min-width: 0; gap: 3px; flex: 1; }
+.admin-setup-check strong { overflow: hidden; color: #555e72; font-size: 8px; text-overflow: ellipsis; }
+.admin-setup-check small { color: #9299a8; font-size: 7px; }
+.admin-setup-count { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border-radius: 50%; color: #277653; background: #eaf7f0; font-size: 9px; font-weight: 700; }
+.admin-setup-count.is-pending { color: #9a661d; background: #fff3dc; }
+.admin-setup-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 12px; margin-top: 12px; border-top: 1px solid #f0f1f5; }
+.admin-setup-actions > span { margin-right: auto; color: #8990a0; font-size: 8px; }
+.admin-setup-actions a { display: inline-flex; align-items: center; gap: 5px; color: #5d55c9; font-size: 8px; text-decoration: none; }
+.admin-setup-actions a:hover { color: #3830a8; }
+@media (max-width: 1100px) { .admin-setup-checks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .admin-setup-pulse { padding: 13px; }.admin-setup-checks { grid-template-columns: 1fr 1fr; }.admin-setup-heading { flex-direction: column; }.admin-setup-actions > span { width: 100%; } }
+@media (max-width: 390px) { .admin-setup-checks { grid-template-columns: 1fr; } }
+
 .learning-hub-heading { margin-bottom: 18px; }
 .learning-connectivity { display: flex; align-items: center; gap: 8px; padding: 11px 14px; margin-bottom: 18px; border: 1px solid #dfece6; border-radius: 12px; color: #28714e; background: #f3faf6; font-size: 13px; }
 .learning-connectivity.is-offline { border-color: #f2dfbd; color: #8a5b16; background: #fffaf0; }

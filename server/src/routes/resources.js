@@ -116,8 +116,9 @@ function resourceProjection(key, role) {
 
 function populateResource(key, queryBuilder) {
   const paths = {
-    students: [['classId', 'name section']],
-    teachers: [['subjects', 'name'], ['assignedClasses', 'name section']],
+    parents: [['userId', 'name email isActive'], ['children', 'name admissionNumber classId']],
+    students: [['userId', 'name email isActive'], ['classId', 'name section'], ['parentIds', 'name email']],
+    teachers: [['userId', 'name email isActive'], ['subjects', 'name'], ['assignedClasses', 'name section']],
     classes: [['classTeacherId', 'name'], ['subjects', 'name'], ['students', 'name']],
     subjects: [['classId', 'name section'], ['teacherId', 'name']],
     attendance: [['studentId', 'name email'], ['classId', 'name section']],
@@ -163,13 +164,16 @@ async function validateResourceReferences(key, fields, user) {
     }
   }
   if (key === 'teachers') {
-    const [account, classCount, subjectCount] = await Promise.all([
+    const [account, classCount, subjectCount, unassignedSubjects] = await Promise.all([
       User.findById(fields.userId).select('role'),
       SchoolClass.countDocuments({ _id: { $in: fields.assignedClasses || [] } }),
       Subject.countDocuments({ _id: { $in: fields.subjects || [] } }),
+      fields.subjects?.length
+        ? Subject.countDocuments({ _id: { $in: fields.subjects }, classId: { $nin: fields.assignedClasses || [] } })
+        : 0,
     ])
-    if (!account || account.role !== 'teacher' || classCount !== (fields.assignedClasses || []).length || subjectCount !== (fields.subjects || []).length) {
-      throw new AppError(400, 'Teacher account, class, or subject reference is invalid.')
+    if (!account || account.role !== 'teacher' || classCount !== (fields.assignedClasses || []).length || subjectCount !== (fields.subjects || []).length || unassignedSubjects) {
+      throw new AppError(400, 'Teacher account or class assignment is invalid. Assign each subject’s class to the teacher first.')
     }
   }
   if (key === 'parents') {
@@ -190,13 +194,19 @@ async function validateResourceReferences(key, fields, user) {
     if (!teacherExists || studentCount !== (fields.students || []).length || subjectCount !== (fields.subjects || []).length) {
       throw new AppError(400, 'Class teacher, student, or subject reference is invalid.')
     }
+    if (fields.subjects?.length && await Subject.countDocuments({ _id: { $in: fields.subjects }, classId: { $ne: fields._id } })) {
+      throw new AppError(400, 'Every subject assigned to a class must belong to that class.')
+    }
   }
   if (key === 'subjects') {
-    const [classExists, teacherExists] = await Promise.all([
+    const [classExists, teacher] = await Promise.all([
       SchoolClass.exists({ _id: fields.classId }),
-      fields.teacherId ? Teacher.exists({ _id: fields.teacherId }) : true,
+      fields.teacherId ? Teacher.findById(fields.teacherId).select('assignedClasses') : null,
     ])
-    if (!classExists || !teacherExists) throw new AppError(400, 'Subject class or teacher reference is invalid.')
+    const teacherAssigned = !fields.teacherId || teacher?.assignedClasses.some((classId) => classId.toString() === fields.classId?.toString())
+    if (!classExists || !teacherAssigned) {
+      throw new AppError(400, 'Subject class is invalid or its teacher is not assigned to that class.')
+    }
   }
   if (key === 'assignments') {
     const [classExists, subject, assignedTeacher] = await Promise.all([
@@ -252,6 +262,149 @@ async function validateResourceReferences(key, fields, user) {
     if (teacher && !assignedClasses.some((classId) => classId.toString() === assignment.classId.toString())) {
       throw new AppError(403, 'You can only review submissions in your assigned classes.')
     }
+  }
+}
+
+async function syncStudentRelationships(student, previous = {}) {
+  const studentId = student._id
+  const previousClassId = previous.classId?.toString()
+  const nextClassId = student.classId?.toString()
+  if (previousClassId !== nextClassId) {
+    if (previousClassId) await SchoolClass.updateOne({ _id: previousClassId }, { $pull: { students: studentId } })
+    if (nextClassId) {
+      const schoolClass = await SchoolClass.findById(nextClassId).select('section')
+      await SchoolClass.updateOne({ _id: nextClassId }, { $addToSet: { students: studentId } })
+      if (schoolClass && !student.section) {
+        student.section = schoolClass.section
+        await student.save()
+      }
+    } else if (student.section) {
+      student.section = ''
+      await student.save()
+    }
+  }
+
+  const previousParentIds = (previous.parentIds || []).map((id) => id.toString())
+  const nextParentIds = (student.parentIds || []).map((id) => id.toString())
+  await Parent.updateMany(
+    { children: studentId, _id: { $nin: nextParentIds } },
+    { $pull: { children: studentId } },
+  )
+  if (nextParentIds.length) {
+    await Parent.updateMany({ _id: { $in: nextParentIds } }, { $addToSet: { children: studentId } })
+  }
+  return previousParentIds
+}
+
+async function syncParentRelationships(parent) {
+  const nextChildren = parent.children || []
+  await Student.updateMany(
+    { parentIds: parent._id, _id: { $nin: nextChildren } },
+    { $pull: { parentIds: parent._id } },
+  )
+  if (nextChildren.length) {
+    await Student.updateMany({ _id: { $in: nextChildren } }, { $addToSet: { parentIds: parent._id } })
+  }
+  return undefined
+}
+
+async function syncClassTeacher(schoolClass, previousTeacherId = null) {
+  const previousId = previousTeacherId?.toString()
+  const nextId = schoolClass.classTeacherId?.toString()
+  if (previousId && previousId !== nextId) {
+    await Teacher.updateOne({ _id: previousId }, { $pull: { assignedClasses: schoolClass._id } })
+  }
+  if (nextId) {
+    await Teacher.updateOne({ _id: nextId }, { $addToSet: { assignedClasses: schoolClass._id } })
+  }
+}
+
+async function syncTeacherClassAccess(teacher) {
+  const classTeacherClasses = await SchoolClass.find({ classTeacherId: teacher._id }).distinct('_id')
+  const assignedClasses = [...new Set([
+    ...(teacher.assignedClasses || []).map((id) => id.toString()),
+    ...classTeacherClasses.map((id) => id.toString()),
+  ])]
+  await Teacher.updateOne({ _id: teacher._id }, { $set: { assignedClasses } })
+}
+
+async function syncClassRoster(schoolClass) {
+  const selectedIds = schoolClass.students || []
+  const selected = new Set(selectedIds.map((id) => id.toString()))
+  const previousStudents = await Student.find({ classId: schoolClass._id }).select('_id')
+  const removedIds = previousStudents
+    .map((student) => student._id)
+    .filter((id) => !selected.has(id.toString()))
+  if (removedIds.length) {
+    await Student.updateMany(
+      { _id: { $in: removedIds }, classId: schoolClass._id },
+      { $set: { classId: null, section: '' } },
+    )
+  }
+  const selectedStudents = selectedIds.length
+    ? await Student.find({ _id: { $in: selectedIds } }).select('_id classId')
+    : []
+  const previousClassIds = [...new Set(selectedStudents
+    .map((student) => student.classId?.toString())
+    .filter((id) => id && id !== schoolClass.id))]
+  if (previousClassIds.length) {
+    await SchoolClass.updateMany(
+      { _id: { $in: previousClassIds } },
+      { $pull: { students: { $in: selectedIds } } },
+    )
+  }
+  if (selectedIds.length) {
+    await Student.updateMany(
+      { _id: { $in: selectedIds } },
+      { $set: { classId: schoolClass._id, section: schoolClass.section } },
+    )
+  }
+  await SchoolClass.updateOne({ _id: schoolClass._id }, { $set: { students: selectedIds } })
+}
+
+async function syncSubjectRelationships(subject, previous = {}) {
+  const previousClassId = previous.classId?.toString()
+  const nextClassId = subject.classId?.toString()
+  if (previousClassId && previousClassId !== nextClassId) {
+    await SchoolClass.updateOne({ _id: previousClassId }, { $pull: { subjects: subject._id } })
+  }
+  if (nextClassId) {
+    await SchoolClass.updateOne({ _id: nextClassId }, { $addToSet: { subjects: subject._id } })
+  }
+
+  const previousTeacherId = previous.teacherId?.toString()
+  const nextTeacherId = subject.teacherId?.toString()
+  if (previousTeacherId && previousTeacherId !== nextTeacherId) {
+    await Teacher.updateOne({ _id: previousTeacherId }, { $pull: { subjects: subject._id } })
+  }
+  if (nextTeacherId) {
+    await Teacher.updateMany(
+      { _id: { $ne: nextTeacherId }, subjects: subject._id },
+      { $pull: { subjects: subject._id } },
+    )
+    await Teacher.updateOne({ _id: nextTeacherId }, { $addToSet: { subjects: subject._id } })
+  }
+}
+
+async function syncTeacherSubjects(teacher, previousSubjects = []) {
+  const nextSubjects = teacher.subjects || []
+  const nextIds = new Set(nextSubjects.map((id) => id.toString()))
+  const removedIds = previousSubjects.filter((id) => !nextIds.has(id.toString()))
+  if (removedIds.length) {
+    await Subject.updateMany(
+      { _id: { $in: removedIds }, teacherId: teacher._id },
+      { $set: { teacherId: null } },
+    )
+  }
+  if (nextSubjects.length) {
+    await Subject.updateMany(
+      { _id: { $in: nextSubjects } },
+      { $set: { teacherId: teacher._id } },
+    )
+    await Teacher.updateMany(
+      { _id: { $ne: teacher._id }, subjects: { $in: nextSubjects } },
+      { $pull: { subjects: { $in: nextSubjects } } },
+    )
   }
 }
 
@@ -343,6 +496,52 @@ async function mayContact(firstUser, secondUser) {
   return firstUser.role === 'teacher' && secondUser.role === 'teacher'
 }
 
+const resourceCreateValidators = {
+  students: [
+    body('name').trim().isLength({ min: 2, max: 120 }),
+    body('email').trim().isEmail().normalizeEmail(),
+    body('password').isString().isLength({ min: 8, max: 128 })
+      .custom((value) => Buffer.byteLength(value, 'utf8') <= 72),
+    body('admissionNumber').trim().isLength({ min: 1, max: 64 }),
+    body('classId').optional({ nullable: true, checkFalsy: true }).isMongoId(),
+    body('parentIds').optional().isArray({ max: 10 }),
+    body('parentIds.*').isMongoId(),
+  ],
+  teachers: [
+    body('name').trim().isLength({ min: 2, max: 120 }),
+    body('email').trim().isEmail().normalizeEmail(),
+    body('password').isString().isLength({ min: 8, max: 128 })
+      .custom((value) => Buffer.byteLength(value, 'utf8') <= 72),
+    body('employeeId').trim().isLength({ min: 1, max: 64 }),
+    body('assignedClasses').optional().isArray({ max: 100 }),
+    body('assignedClasses.*').isMongoId(),
+    body('subjects').optional().isArray({ max: 100 }),
+    body('subjects.*').isMongoId(),
+  ],
+  parents: [
+    body('name').trim().isLength({ min: 2, max: 120 }),
+    body('email').trim().isEmail().normalizeEmail(),
+    body('password').isString().isLength({ min: 8, max: 128 })
+      .custom((value) => Buffer.byteLength(value, 'utf8') <= 72),
+    body('children').optional().isArray({ max: 20 }),
+    body('children.*').isMongoId(),
+  ],
+  classes: [
+    body('name').trim().isLength({ min: 1, max: 120 }),
+    body('section').trim().isLength({ min: 1, max: 32 }),
+    body('academicYear').trim().isLength({ min: 4, max: 32 }),
+    body('classTeacherId').optional({ nullable: true, checkFalsy: true }).isMongoId(),
+    body('students').optional().isArray({ max: 500 }),
+    body('students.*').isMongoId(),
+  ],
+  subjects: [
+    body('name').trim().isLength({ min: 1, max: 120 }),
+    body('subjectCode').trim().isLength({ min: 1, max: 32 }),
+    body('classId').isMongoId(),
+    body('teacherId').optional({ nullable: true, checkFalsy: true }).isMongoId(),
+  ],
+}
+
 function resourceRoute(key, spec) {
   const resource = Router()
   resource.use(authenticate, allowRoles(...spec.roles))
@@ -359,7 +558,7 @@ function resourceRoute(key, spec) {
       res.json({ data: records, pagination: { page, limit, total, pages: Math.ceil(total / limit) } })
     }),
   )
-  resource.post('/', allowRoles(...spec.write), asyncHandler(async (req, res) => {
+  resource.post('/', allowRoles(...spec.write), ...(resourceCreateValidators[key] || []), validate, asyncHandler(async (req, res) => {
     if (key === 'submissions' && req.user.role === 'student') {
       throw new AppError(400, 'Use the assignment submission endpoint to upload your work.')
     }
@@ -375,6 +574,8 @@ function resourceRoute(key, spec) {
         email: fields.email,
         passwordHash: await bcrypt.hash(req.body.password, 12),
         role: accountRole,
+        phone: fields.phone || '',
+        address: fields.address || '',
       })
       fields.userId = linkedAccount.id
     }
@@ -402,9 +603,17 @@ function resourceRoute(key, spec) {
     try {
       await validateResourceReferences(key, fields, req.user)
       created = await spec.model.create(fields)
-      if (key === 'students' && fields.classId) {
-        await SchoolClass.updateOne({ _id: fields.classId }, { $addToSet: { students: created.id } })
+      if (key === 'students') await syncStudentRelationships(created)
+      if (key === 'parents') await syncParentRelationships(created)
+      if (key === 'teachers') {
+        await syncTeacherSubjects(created)
+        await syncTeacherClassAccess(created)
       }
+      if (key === 'classes') {
+        await syncClassRoster(created)
+        await syncClassTeacher(created)
+      }
+      if (key === 'subjects') await syncSubjectRelationships(created)
     } catch (error) {
       if (created) await spec.model.findByIdAndDelete(created.id)
       if (linkedAccount) await User.findByIdAndDelete(linkedAccount.id)
@@ -461,7 +670,7 @@ function resourceRoute(key, spec) {
     const changes = pickFields(req.body, spec.fields)
     const current = await spec.model.findOne({ _id: req.params.id, ...scope })
     if (!current) throw new AppError(404, 'Record not found.')
-    const previousClassId = current.classId?.toString()
+    const previous = current.toObject()
     if (key === 'submissions' && req.user.role !== 'student') {
       throw new AppError(400, 'Use the submission review endpoint to grade work.')
     }
@@ -498,16 +707,25 @@ function resourceRoute(key, spec) {
       const accountChanges = {}
       if (changes.name) accountChanges.name = changes.name
       if (changes.email) accountChanges.email = changes.email
+      if (changes.phone !== undefined) accountChanges.phone = changes.phone
+      if (changes.address !== undefined) accountChanges.address = changes.address
       await User.findByIdAndUpdate(current.userId, accountChanges, { runValidators: true })
       record = await current.save()
     } else {
       record = await spec.model.findOneAndUpdate({ _id: req.params.id, ...scope }, changes, { new: true, runValidators: true })
     }
     if (!record) throw new AppError(404, 'Record not found.')
-    if (key === 'students' && previousClassId !== record.classId?.toString()) {
-      if (previousClassId) await SchoolClass.updateOne({ _id: previousClassId }, { $pull: { students: record.id } })
-      if (record.classId) await SchoolClass.updateOne({ _id: record.classId }, { $addToSet: { students: record.id } })
+    if (key === 'students') await syncStudentRelationships(record, previous)
+    if (key === 'parents') await syncParentRelationships(record)
+    if (key === 'teachers') {
+      await syncTeacherSubjects(record, previous.subjects)
+      await syncTeacherClassAccess(record)
     }
+    if (key === 'classes') {
+      await syncClassRoster(record)
+      await syncClassTeacher(record, previous.classTeacherId)
+    }
+    if (key === 'subjects') await syncSubjectRelationships(record, previous)
     res.json({ data: record })
   }))
   resource.delete('/:id', allowRoles(...spec.write), param('id').isMongoId(), validate, asyncHandler(async (req, res) => {
