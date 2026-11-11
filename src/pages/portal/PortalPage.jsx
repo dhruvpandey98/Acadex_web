@@ -9,7 +9,7 @@ import { assistantService } from '../../services/assistantService.js'
 import { portalApi, recordPayload } from '../../services/portalService.js'
 import { authService } from '../../services/authService.js'
 import AssignmentsPage from '../../Pages/portal/AssignmentsPage.jsx'
-import LearningHubPage from './LearningHubPage.jsx'
+import LearningHubPage from '../../Pages/portal/LearningHubPage.jsx'
 
 const colors = ['#5549e6', '#18a879', '#f3a650', '#e47b8c']
 const fieldsFor = {
