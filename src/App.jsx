@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from './hooks/useApp.js'
 
 const LandingPage = lazy(() => import('./pages/landing/LandingPage.jsx'))
@@ -10,8 +10,9 @@ const DatasetInsights = lazy(() => import('./pages/portal/DatasetInsights.jsx'))
 
 function ProtectedPortal() {
   const { user, authLoading } = useApp()
+  const location = useLocation()
   if (authLoading) return <div className="route-loading">Checking your Acadex session…</div>
-  return user ? <PortalLayout /> : <Navigate to="/login" replace />
+  return user ? <PortalLayout /> : <Navigate to="/login" replace state={{ from: location }} />
 }
 
 function AdminDatasetInsights() {

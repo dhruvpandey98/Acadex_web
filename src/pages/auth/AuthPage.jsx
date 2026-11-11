@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, GraduationCap, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/common/UI.jsx'
 import { useApp } from '../../hooks/useApp.js'
 import { authService } from '../../services/authService.js'
@@ -14,6 +14,7 @@ const demoEmails = {
 }
 
 export default function AuthPage({ mode }) {
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [role, setRole] = useState('Admin')
   const [email, setEmail] = useState(searchParams.get('email') || 'admin@acadex.demo')
@@ -28,6 +29,10 @@ export default function AuthPage({ mode }) {
   const forgot = mode === 'forgot'
   const reset = mode === 'reset'
   const resetToken = searchParams.get('token') || ''
+  const returnPath = location.state?.from
+  const returnTo = returnPath?.pathname?.startsWith('/portal/')
+    ? `${returnPath.pathname}${returnPath.search || ''}${returnPath.hash || ''}`
+    : '/portal'
 
   async function submit(event) {
     event.preventDefault()
@@ -47,7 +52,7 @@ export default function AuthPage({ mode }) {
         navigate('/portal')
       } else {
         await login(email.trim(), password)
-        navigate('/portal')
+        navigate(returnTo, { replace: true })
       }
     } catch (requestError) {
       setError(requestError.message)
