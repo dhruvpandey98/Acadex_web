@@ -13,8 +13,12 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 validateEnvironment()
+const demoPassword = process.env.DEMO_PASSWORD
+if (!demoPassword || Buffer.byteLength(demoPassword, 'utf8') < 12 || Buffer.byteLength(demoPassword, 'utf8') > 72) {
+  throw new Error('DEMO_PASSWORD must be configured with 12 to 72 UTF-8 bytes before seeding demo accounts.')
+}
 await connectDatabase()
-const passwordHash = await bcrypt.hash(process.env.DEMO_PASSWORD || 'Acadex-Demo-2026!', 12)
+const passwordHash = await bcrypt.hash(demoPassword, 12)
 
 async function seedUser(name, email, role) {
   return User.findOneAndUpdate(
@@ -163,7 +167,7 @@ try {
   )
 
   console.log('Acadex demo data is ready.')
-  console.log(`Demo password: ${process.env.DEMO_PASSWORD || 'Acadex-Demo-2026!'}`)
+  console.log('Demo accounts use the configured DEMO_PASSWORD.')
   console.log('Admin: admin@acadex.demo; teacher: teacher@acadex.demo; student: student@acadex.demo; parent: parent@acadex.demo')
 } finally {
   await mongoose.disconnect()

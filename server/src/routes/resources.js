@@ -7,6 +7,7 @@ import {
 } from '../models/index.js'
 import { authenticate, allowRoles } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
+import { assignmentVisibilityForStudents } from '../utils/assignmentVisibility.js'
 import { AppError, asyncHandler } from '../utils/errors.js'
 
 const router = Router()
@@ -83,7 +84,7 @@ async function accessScope(key, user) {
     return {
       classId: { $in: ownClasses },
       status: { $in: ['published', 'closed'] },
-      $or: [{ targetStudents: { $size: 0 } }, { targetStudents: { $in: studentIds } }],
+      ...assignmentVisibilityForStudents(studentIds),
     }
   }
   if (key === 'attendance' || key === 'grades' || key === 'fees') return { studentId: { $in: studentIds } }

@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js'
 import { Assignment, Attendance, Grade, Parent, SchoolClass, Student, Submission, Teacher } from '../models/index.js'
 import { asyncHandler } from '../utils/errors.js'
 import { attendancePercentage } from '../utils/attendance.js'
+import { assignmentVisibilityForStudents } from '../utils/assignmentVisibility.js'
 
 const router = Router()
 router.use(authenticate)
@@ -54,7 +55,13 @@ router.get('/:role', asyncHandler(async (req, res) => {
     const studentId = student._id
     const [attendance, pendingAssignments, grades, subjectPerformance] = await Promise.all([
       attendanceStats({ studentId }),
-      Assignment.countDocuments({ classId: student?.classId, status: 'published', dueDate: { $gte: new Date() }, _id: { $nin: await Submission.find({ studentId }).distinct('assignmentId') } }),
+      Assignment.countDocuments({
+        classId: student.classId,
+        status: 'published',
+        dueDate: { $gte: new Date() },
+        _id: { $nin: await Submission.find({ studentId }).distinct('assignmentId') },
+        ...assignmentVisibilityForStudents([studentId]),
+      }),
       Grade.find({ studentId }).sort({ createdAt: -1 }).limit(10).populate('subjectId', 'name'),
       Grade.aggregate([{ $match: { studentId } }, { $group: { _id: '$subjectId', average: { $avg: '$percentage' } } }, { $lookup: { from: 'subjects', localField: '_id', foreignField: '_id', as: 'subject' } }, { $unwind: { path: '$subject', preserveNullAndEmptyArrays: true } }, { $project: { _id: 0, subject: '$subject.name', average: { $round: ['$average', 1] } } }]),
     ])
@@ -62,11 +69,19 @@ router.get('/:role', asyncHandler(async (req, res) => {
   } else if (role === 'parent' && user.role === 'parent') {
     const parent = await Parent.findOne({ userId: user.id }).select('children')
     const childIds = parent?.children || []
+    const childClasses = childIds.length
+      ? await Student.find({ _id: { $in: childIds } }).distinct('classId')
+      : []
     const [children, grades, attendance, assignments] = await Promise.all([
       Student.find({ _id: { $in: childIds } }).select('name classId'),
       Grade.find({ studentId: { $in: childIds } }).sort({ createdAt: -1 }).limit(20).populate('studentId', 'name').populate('subjectId', 'name'),
       Attendance.aggregate([{ $match: { studentId: { $in: childIds } } }, { $group: { _id: '$studentId', total: { $sum: 1 }, present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late']] }, 1, 0] } } } }, { $project: { _id: 1, percentage: { $round: [{ $multiply: [{ $divide: ['$present', '$total'] }, 100] }, 1] } } }]),
-      Assignment.find({ classId: { $in: await Student.find({ _id: { $in: childIds } }).distinct('classId') }, dueDate: { $gte: new Date() } }).sort({ dueDate: 1 }).limit(10),
+      Assignment.find({
+        classId: { $in: childClasses },
+        status: { $in: ['published', 'closed'] },
+        dueDate: { $gte: new Date() },
+        ...assignmentVisibilityForStudents(childIds),
+      }).sort({ dueDate: 1 }).limit(10),
     ])
     data = { children, grades, attendance, assignments }
   } else {

@@ -19,7 +19,7 @@ export default function AuthPage({ mode }) {
   const [role, setRole] = useState('Admin')
   const [email, setEmail] = useState(searchParams.get('email') || 'admin@acadex.demo')
   const [name, setName] = useState('')
-  const [password, setPassword] = useState(import.meta.env.DEV ? 'Acadex-Demo-2026!' : '')
+  const [password, setPassword] = useState('')
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -123,7 +123,7 @@ export default function AuthPage({ mode }) {
             </Button>
           </form>
 
-          {!isRegister && !forgot && !reset && <div className="demo-hint"><Sparkles size={14} /><span><strong>Development demo</strong> The demo password is prefilled in development; the server must be running.</span></div>}
+          {!isRegister && !forgot && !reset && <div className="demo-hint"><Sparkles size={14} /><span><strong>Development demo</strong> Use the password configured with <code>DEMO_PASSWORD</code> when starting the local seed data.</span></div>}
           {(forgot || reset) && <p className="auth-switch"><Link to="/login"><ArrowLeft size={14} /> Back to sign in</Link></p>}
           {!forgot && !reset && <p className="auth-switch">{isRegister ? 'Already part of Acadex?' : 'New to Acadex?'} <Link to={isRegister ? '/login' : '/register'}>{isRegister ? 'Sign in' : 'Create an account'}</Link></p>}
           <p className="auth-legal">By continuing, you agree to Acadex’s <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a>.</p>

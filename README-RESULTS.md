@@ -4,7 +4,7 @@
 - Website: https://acadex-web.onrender.com/
 - Login demo credentials:
   - Email: admin@acadex.demo
-  - Password: Acadex-Demo-2026!
+  - Password: Configure `DEMO_PASSWORD` locally; credentials are not stored in this repository.
 
 ## Snapshot Summary
 This test pass focused on the live demo environment and the browser behavior after login.

@@ -49,9 +49,9 @@ The repository includes a Render Blueprint in `render.yaml`. It builds the Vite 
 
 Render's free web services sleep after 15 minutes without traffic and can take about a minute to wake. Their local filesystem is ephemeral. New uploads are stored in MongoDB so they survive service restarts and deploys; keep in mind the Atlas free cluster has limited storage, and each upload is capped at 10 MiB.
 
-The seed script is development-only and creates accounts with a shared password. Do not seed a public deployment with the default password or use this free setup for real student records: free hosting is intended for demos and testing, not production workloads or sensitive education data. Public registration creates student accounts only; there is no public admin registration endpoint.
+The seed script is development-only and creates accounts with a shared password. Configure a unique `DEMO_PASSWORD` before seeding; the repository does not provide a default. Do not seed a public deployment or use this free setup for real student records: free hosting is intended for demos and testing, not production workloads or sensitive education data. Public registration creates student accounts only; there is no public admin registration endpoint.
 
-For a disposable demo that needs the seeded admin, teacher, and parent accounts, set a unique `DEMO_PASSWORD` in Render's environment settings, then run `NODE_ENV=development npm --prefix server run seed` from the Render Shell. This command seeds data without changing the deployed service's `NODE_ENV`; never use the published default demo password.
+For a disposable demo that needs the seeded admin, teacher, and parent accounts, set a unique `DEMO_PASSWORD` in Render's environment settings, then run `NODE_ENV=development npm --prefix server run seed` from the Render Shell. This command seeds data without changing the deployed service's `NODE_ENV`. Use only a disposable database and a unique password; do not use demo accounts for real student records.
 
 ## Importing the synthetic dataset
 
@@ -67,7 +67,7 @@ The importer requires this explicit production opt-in, upserts rows by stable so
 
 ## Demo data
 
-Set `DEMO_PASSWORD` in `server/.env` before seeding if you want to choose a different development password. Then run:
+Set a unique `DEMO_PASSWORD` in `server/.env` before seeding. The seed command does not provide a built-in password. Then run:
 
 ```sh
 npm run seed
@@ -82,7 +82,7 @@ The seed command requires `NODE_ENV=development` and is idempotent for its demo 
 | Student | `student@acadex.demo` |
 | Parent | `parent@acadex.demo` |
 
-Development-only demo password: `Acadex-Demo-2026!` (unless overridden with `DEMO_PASSWORD`). The development login form pre-fills this demo password; login still requires a running API and a seeded account. The seed also creates 10 teachers, 100 students, 20 parent accounts, 10 classes, subjects, attendance, assignments, submissions, grades, fees, announcements, notifications, and timetable rows. Additional teacher/student/parent accounts follow the `teacherN@acadex.demo`, `studentNNN@acadex.demo`, and `parentNN@acadex.demo` patterns and use the same seed password.
+There is no shared default demo password. Set a unique `DEMO_PASSWORD` in the server environment before running the seed command, then enter it manually at sign-in. The seed also creates 10 teachers, 100 students, 20 parent accounts, 10 classes, subjects, attendance, assignments, submissions, grades, fees, announcements, notifications, and timetable rows. Additional teacher/student/parent accounts follow the `teacherN@acadex.demo`, `studentNNN@acadex.demo`, and `parentNN@acadex.demo` patterns and use the configured seed password.
 
 Public registration creates student accounts only. Admin, teacher, and parent demo accounts are provisioned by the development seed; there is no public admin registration endpoint.
 

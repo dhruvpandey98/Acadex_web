@@ -33,6 +33,74 @@ test('school records require authentication', async () => {
   assert.equal((await response.json()).error.message, 'Authentication is required.')
 })
 
+test('all protected API routes reject unauthenticated requests', async () => {
+  const id = '000000000000000000000001'
+  const resources = [
+    'parents', 'students', 'teachers', 'classes', 'subjects', 'attendance',
+    'assignments', 'submissions', 'grades', 'announcements', 'notifications',
+    'fees', 'timetable',
+  ]
+  const requests = resources.flatMap((resource) => [
+    ['GET', `/api/${resource}`],
+    ['POST', `/api/${resource}`],
+    ['GET', `/api/${resource}/${id}`],
+    ['PUT', `/api/${resource}/${id}`],
+    ['DELETE', `/api/${resource}/${id}`],
+  ])
+  requests.push(
+    ['GET', '/api/auth/me'],
+    ['PATCH', '/api/auth/change-password'],
+    ['POST', '/api/auth/refresh'],
+    ['GET', '/api/dashboard/admin'],
+    ['GET', '/api/assignment-workflow'],
+    ['POST', '/api/assignment-workflow'],
+    ['POST', `/api/assignment-workflow/${id}/submissions`],
+    ['PUT', `/api/assignment-workflow/submissions/${id}/review`],
+    ['POST', '/api/attendance/bulk'],
+    ['GET', '/api/attendance/summary'],
+    ['GET', `/api/attendance/student/${id}`],
+    ['GET', `/api/fees/student/${id}`],
+    ['PUT', `/api/submissions/${id}/review`],
+    ['PATCH', `/api/users/${id}/status`],
+    ['PATCH', '/api/notifications/read-all'],
+    ['PATCH', `/api/notifications/${id}/read`],
+    ['GET', '/api/conversations'],
+    ['GET', `/api/messages/${id}`],
+    ['PATCH', `/api/messages/${id}/read`],
+    ['POST', '/api/messages'],
+    ['POST', '/api/conversations'],
+    ['POST', '/api/uploads'],
+    ['GET', `/api/uploads/${id}`],
+    ['GET', '/api/dataset/insights'],
+    ['GET', '/api/ai/health'],
+    ['POST', '/api/ai/ask'],
+    ['GET', '/api/ai/conversations'],
+    ['POST', '/api/ai/conversations'],
+    ['GET', `/api/ai/conversations/${id}`],
+    ['DELETE', `/api/ai/conversations/${id}`],
+    ['POST', `/api/ai/conversations/${id}/messages`],
+    ['GET', '/api/learning-hub'],
+    ['GET', '/api/learning-hub/parent-digest'],
+    ['POST', '/api/learning-hub/plan'],
+    ['POST', '/api/learning-hub/digest'],
+    ['POST', '/api/learning-hub/parent-digest'],
+    ['POST', '/api/learning-hub/portfolio'],
+    ['DELETE', `/api/learning-hub/portfolio/${id}`],
+    ['POST', '/api/learning-hub/support-requests'],
+    ['GET', '/api/learning-hub/support-requests'],
+    ['GET', '/api/learning-hub/class-workload'],
+    ['PUT', `/api/learning-hub/support-requests/${id}/respond`],
+    ['POST', '/api/learning-hub/improvement-steps'],
+    ['PATCH', `/api/learning-hub/submissions/${id}/next-steps/0`],
+  )
+
+  const responses = await Promise.all(requests.map(([method, path]) => fetch(`http://127.0.0.1:${address.port}${path}`, { method })))
+  for (const [index, response] of responses.entries()) {
+    assert.equal(response.status, 401, `${requests[index][0]} ${requests[index][1]} must require authentication`)
+    await response.arrayBuffer()
+  }
+})
+
 test('dataset insights require authentication', async () => {
   const response = await fetch(`http://127.0.0.1:${address.port}/api/dataset/insights`)
   assert.equal(response.status, 401)
