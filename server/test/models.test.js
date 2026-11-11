@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import mongoose from 'mongoose'
-import { Assignment, AssistantConversation, Attendance, Conversation, Grade, PasswordReset, Submission, Timetable, Upload, User } from '../src/models/index.js'
+import { AcademicDigest, Assignment, AssistantConversation, Attendance, Conversation, Grade, LearningPlan, ParentDigest, PortfolioEntry, PasswordReset, Submission, SupportRequest, Timetable, Upload, User } from '../src/models/index.js'
 
 test('attendance schema enforces one record per student and date', () => {
   const uniqueAttendanceIndex = Attendance.schema.indexes().find(([keys, options]) => (
@@ -31,6 +31,18 @@ test('assignments support student targeting and resubmission while submissions k
   assert.equal(new Assignment().allowResubmission, true)
   assert.equal(Submission.schema.path('history').instance, 'Array')
   assert.equal(Submission.schema.path('history').schema.path('attachments').instance, 'Array')
+  assert.equal(Submission.schema.path('nextSteps').instance, 'Array')
+})
+
+test('Learning Hub records are scoped and enforce one weekly plan and digest per learner', () => {
+  assert.equal(LearningPlan.schema.path('studentId').options.required, true)
+  assert.equal(LearningPlan.schema.path('items').instance, 'Array')
+  assert.ok(LearningPlan.schema.indexes().some(([keys, options]) => keys.studentId === 1 && keys.weekStarting === 1 && options.unique))
+  assert.ok(AcademicDigest.schema.indexes().some(([keys, options]) => keys.userId === 1 && keys.weekStarting === 1 && options.unique))
+  assert.ok(ParentDigest.schema.indexes().some(([keys, options]) => keys.userId === 1 && keys.studentId === 1 && keys.weekStarting === 1 && options.unique))
+  assert.ok(PortfolioEntry.schema.indexes().some(([keys, options]) => keys.studentId === 1 && keys.submissionId === 1 && options.unique))
+  assert.equal(SupportRequest.schema.path('message').options.maxlength, 1000)
+  assert.ok(SupportRequest.schema.indexes().some(([keys, options]) => keys.studentId === 1 && keys.assignmentId === 1 && options.unique && options.partialFilterExpression.status === 'open'))
 })
 
 test('study chat records are owned and keep a bounded, typed message history', () => {

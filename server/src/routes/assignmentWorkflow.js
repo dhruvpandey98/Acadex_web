@@ -72,7 +72,16 @@ async function assignmentPayload(assignment, students, submissions, includeRoste
         marksObtained: submission.marksObtained,
         feedback: submission.feedback,
         status: submissionStatus(submission, assignment),
-        history: submission.history,
+        nextSteps: submission.nextSteps,
+        history: await Promise.all(submission.history.map(async (version) => ({
+          submissionText: version.submissionText,
+          submittedAt: version.submittedAt,
+          marksObtained: version.marksObtained,
+          feedback: version.feedback,
+          status: version.status,
+          nextSteps: version.nextSteps,
+          attachments: await fileDetails(version.attachments),
+        }))),
         attachments: await fileDetails(submission.attachments),
       },
     }
@@ -287,6 +296,7 @@ router.post('/:assignmentId/submissions',
         feedback: submission.feedback,
         status: submission.status,
         reviewedBy: submission.reviewedBy,
+        nextSteps: submission.nextSteps,
       })
       submission.submissionText = req.body.submissionText || ''
       submission.attachments = req.body.attachments
@@ -295,6 +305,7 @@ router.post('/:assignmentId/submissions',
       submission.feedback = ''
       submission.status = status
       submission.reviewedBy = null
+      submission.nextSteps = []
       await submission.save()
     } else {
       submission = await Submission.create({
@@ -315,6 +326,9 @@ router.put('/submissions/:submissionId/review',
   body('status').optional().isIn(['reviewed', 'graded']),
   body('marksObtained').optional({ nullable: true }).isFloat({ min: 0 }),
   body('feedback').optional().isString().isLength({ max: 5000 }),
+  body('nextSteps').optional().isArray({ max: 5 }),
+  body('nextSteps.*.text').if(body('nextSteps').exists()).isString().trim().isLength({ min: 5, max: 500 }),
+  body('nextSteps.*.completed').optional().isBoolean(),
   validate,
   asyncHandler(async (req, res) => {
     if (!['admin', 'teacher'].includes(req.user.role)) throw new AppError(403, 'Only teachers can evaluate submissions.')
@@ -338,10 +352,11 @@ router.put('/submissions/:submissionId/review',
     }
     if (marksProvided) submission.marksObtained = Number(req.body.marksObtained)
     if (req.body.feedback !== undefined) submission.feedback = req.body.feedback
+    if (req.body.nextSteps !== undefined) submission.nextSteps = req.body.nextSteps
     submission.status = status
     submission.reviewedBy = req.user.id
     await submission.save()
-    res.json({ data: { id: submission.id, status: submission.status, marksObtained: submission.marksObtained, feedback: submission.feedback } })
+    res.json({ data: { id: submission.id, status: submission.status, marksObtained: submission.marksObtained, feedback: submission.feedback, nextSteps: submission.nextSteps } })
   }),
 )
 

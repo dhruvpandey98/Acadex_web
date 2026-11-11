@@ -179,6 +179,25 @@ export function recordPayload(kind, record, { isNew, role }) {
 }
 
 export const portalApi = {
+  learningHub: () => apiRequest('/learning-hub'),
+  generateWeeklyPlan: () => apiRequest('/learning-hub/plan', { method: 'POST' }),
+  generateWeeklyDigest: () => apiRequest('/learning-hub/digest', { method: 'POST' }),
+  parentWeeklyDigest: (studentId = '') => {
+    const query = studentId ? `?studentId=${encodeURIComponent(studentId)}` : ''
+    return apiRequest(`/learning-hub/parent-digest${query}`)
+  },
+  generateParentWeeklyDigest: (studentId) => apiRequest('/learning-hub/parent-digest', {
+    method: 'POST',
+    body: JSON.stringify({ studentId }),
+  }),
+  savePortfolioEntry: (body) => apiRequest('/learning-hub/portfolio', { method: 'POST', body: JSON.stringify(body) }),
+  removePortfolioEntry: (id) => apiRequest(`/learning-hub/portfolio/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  createSupportRequest: (body) => apiRequest('/learning-hub/support-requests', { method: 'POST', body: JSON.stringify(body) }),
+  supportRequests: () => apiRequest('/learning-hub/support-requests'),
+  classWorkload: () => apiRequest('/learning-hub/class-workload'),
+  respondToSupportRequest: (id, body) => apiRequest(`/learning-hub/support-requests/${encodeURIComponent(id)}/respond`, { method: 'PUT', body: JSON.stringify(body) }),
+  suggestAssignmentNextSteps: (body) => apiRequest('/learning-hub/improvement-steps', { method: 'POST', body: JSON.stringify(body) }),
+  updateRevisionStep: (submissionId, stepIndex, completed) => apiRequest(`/learning-hub/submissions/${encodeURIComponent(submissionId)}/next-steps/${stepIndex}`, { method: 'PATCH', body: JSON.stringify({ completed }) }),
   assignmentWorkspace: (filters = {}) => {
     const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
     const query = params.toString()

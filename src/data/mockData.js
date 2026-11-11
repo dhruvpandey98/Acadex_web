@@ -74,17 +74,17 @@ export const navigationByRole = {
   ],
   Teacher: [
     { label: 'My workspace', items: [['Overview', 'overview'], ['My classes', 'classes'], ['Students', 'students']] },
-    { label: 'Teaching', items: [['Attendance', 'attendance'], ['Assignments', 'assignments'], ['Grades', 'grades']] },
+    { label: 'Teaching', items: [['Attendance', 'attendance'], ['Assignments', 'assignments'], ['Grades', 'grades'], ['Student support', 'learning-hub']] },
     { label: 'Communication', items: [['Messages', 'messages'], ['Announcements', 'announcements']] },
   ],
   Student: [
     { label: 'My school', items: [['Overview', 'overview'], ['Assignments', 'assignments'], ['Grades', 'grades']] },
-    { label: 'Learning', items: [['Attendance', 'attendance'], ['Timetable', 'timetable'], ['Report card', 'reports']] },
+    { label: 'Learning', items: [['Learning hub', 'learning-hub'], ['Attendance', 'attendance'], ['Timetable', 'timetable'], ['Report card', 'reports']] },
     { label: 'Connect', items: [['Messages', 'messages'], ['AI study buddy', 'assistant'], ['Announcements', 'announcements']] },
   ],
   Parent: [
     { label: 'Olivia’s school', items: [['Overview', 'overview'], ['Attendance', 'attendance'], ['Grades', 'grades']] },
-    { label: 'Stay involved', items: [['Assignments', 'assignments'], ['Timetable', 'timetable'], ['Messages', 'messages']] },
+    { label: 'Stay involved', items: [['Assignments', 'assignments'], ['Weekly digest', 'learning-hub'], ['Timetable', 'timetable'], ['Messages', 'messages']] },
     { label: 'School updates', items: [['Announcements', 'announcements'], ['Fee status', 'fees'], ['Reports', 'reports']] },
   ],
 }

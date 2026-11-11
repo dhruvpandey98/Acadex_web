@@ -11,6 +11,7 @@ import swaggerJsdoc from 'swagger-jsdoc'
 import swaggerUi from 'swagger-ui-express'
 import authRoutes from './routes/auth.js'
 import assignmentWorkflowRoutes from './routes/assignmentWorkflow.js'
+import learningHubRoutes from './routes/learningHub.js'
 import resourceRoutes from './routes/resources.js'
 import dashboardRoutes from './routes/dashboard.js'
 import uploadRoutes from './routes/uploads.js'
@@ -41,6 +42,7 @@ export async function createApp() {
   })
   app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false }), authRoutes)
   app.use('/api/assignment-workflow', assignmentWorkflowRoutes)
+  app.use('/api/learning-hub', learningHubRoutes)
   app.use('/api', resourceRoutes)
   app.use('/api/dashboard', dashboardRoutes)
   app.use('/api/uploads', uploadRoutes)
@@ -98,6 +100,47 @@ export async function createApp() {
     '/assignment-workflow/submissions/{submissionId}/review': {
       parameters: [{ name: 'submissionId', in: 'path', required: true, schema: { type: 'string' } }],
       put: { summary: 'Record a review, marks, and feedback for an assignment submission', security: [{ accessCookie: [] }], responses: { 200: { description: 'Submission evaluation saved.' } } },
+    },
+    '/learning-hub': {
+      get: { summary: 'Read the current student’s workload, portfolio, announcements, and help requests', security: [{ accessCookie: [] }], responses: { 200: { description: 'Private Learning Hub overview.' } } },
+    },
+    '/learning-hub/plan': {
+      post: { summary: 'Generate and save a Gemini-assisted weekly study plan', security: [{ accessCookie: [] }], responses: { 200: { description: 'Study plan saved.' }, 503: { description: 'Gemini is not configured.' } } },
+    },
+    '/learning-hub/digest': {
+      post: { summary: 'Generate and save a weekly academic digest', security: [{ accessCookie: [] }], responses: { 200: { description: 'Weekly digest saved.' }, 503: { description: 'Gemini is not configured.' } } },
+    },
+    '/learning-hub/parent-digest': {
+      get: { summary: 'Read a weekly digest for a child linked to the current parent', security: [{ accessCookie: [] }], responses: { 200: { description: 'Role-scoped family digest and child choices.' }, 403: { description: 'Child is not linked to the parent.' } } },
+      post: { summary: 'Generate a weekly digest for a linked child', security: [{ accessCookie: [] }], responses: { 200: { description: 'Family digest saved.' }, 403: { description: 'Child is not linked to the parent.' } } },
+    },
+    '/learning-hub/portfolio': {
+      post: { summary: 'Add a student-owned submission and reflection to their portfolio', security: [{ accessCookie: [] }], responses: { 201: { description: 'Portfolio item saved.' } } },
+    },
+    '/learning-hub/portfolio/{entryId}': {
+      parameters: [{ name: 'entryId', in: 'path', required: true, schema: { type: 'string' } }],
+      delete: { summary: 'Remove one portfolio item owned by the current student', security: [{ accessCookie: [] }], responses: { 204: { description: 'Portfolio item removed.' } } },
+    },
+    '/learning-hub/support-requests': {
+      get: { summary: 'List help requests for the current teacher’s classes', security: [{ accessCookie: [] }], responses: { 200: { description: 'Scoped student requests.' } } },
+      post: { summary: 'Ask a teacher for help with an assigned assignment', security: [{ accessCookie: [] }], responses: { 201: { description: 'Help request created.' } } },
+    },
+    '/learning-hub/support-requests/{requestId}/respond': {
+      parameters: [{ name: 'requestId', in: 'path', required: true, schema: { type: 'string' } }],
+      put: { summary: 'Reply to a student help request for a managed assignment', security: [{ accessCookie: [] }], responses: { 200: { description: 'Teacher reply saved.' } } },
+    },
+    '/learning-hub/class-workload': {
+      get: { summary: 'Read anonymous class-level upcoming assignment submission counts', security: [{ accessCookie: [] }], responses: { 200: { description: 'Workload summaries without student identifiers.' } } },
+    },
+    '/learning-hub/submissions/{submissionId}/next-steps/{stepIndex}': {
+      parameters: [
+        { name: 'submissionId', in: 'path', required: true, schema: { type: 'string' } },
+        { name: 'stepIndex', in: 'path', required: true, schema: { type: 'integer' } },
+      ],
+      patch: { summary: 'Update a revision checklist item owned by the current student', security: [{ accessCookie: [] }], responses: { 200: { description: 'Revision step updated.' } } },
+    },
+    '/learning-hub/improvement-steps': {
+      post: { summary: 'Draft teacher-editable revision steps using Gemini', security: [{ accessCookie: [] }], responses: { 200: { description: 'Suggested steps.' }, 503: { description: 'Gemini is not configured.' } } },
     },
     '/notifications/read-all': { patch: { summary: 'Mark all notifications read', security: [{ accessCookie: [] }], responses: { 200: { description: 'Read status updated.' } } } },
     '/notifications/{id}/read': { patch: { summary: 'Mark one notification read', security: [{ accessCookie: [] }], responses: { 200: { description: 'Read status updated.' } } } },

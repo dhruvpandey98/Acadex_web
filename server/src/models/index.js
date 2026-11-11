@@ -113,6 +113,7 @@ const submissionVersionSchema = new Schema({
   feedback: { type: String, trim: true, maxlength: 5000, default: '' },
   status: { type: String, enum: ['submitted', 'late', 'reviewed', 'graded', 'returned'], required: true },
   reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  nextSteps: [{ text: { type: String, trim: true, maxlength: 500 }, completed: { type: Boolean, default: false } }],
 }, { _id: false })
 
 const submissionSchema = new Schema({
@@ -125,9 +126,64 @@ const submissionSchema = new Schema({
   feedback: { type: String, trim: true, maxlength: 5000, default: '' },
   status: { type: String, enum: ['submitted', 'late', 'reviewed', 'graded', 'returned'], default: 'submitted' },
   reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  nextSteps: [{ text: { type: String, trim: true, maxlength: 500 }, completed: { type: Boolean, default: false } }],
   history: { type: [submissionVersionSchema], default: [] },
 }, timestamps)
 submissionSchema.index({ assignmentId: 1, studentId: 1 }, { unique: true })
+
+const learningPlanItemSchema = new Schema({
+  assignmentId: { type: Schema.Types.ObjectId, ref: 'Assignment', required: true },
+  date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  minutes: { type: Number, min: 15, max: 120, required: true },
+  focus: { type: String, trim: true, maxlength: 240, required: true },
+}, { _id: false })
+
+const learningPlanSchema = new Schema({
+  studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+  weekStarting: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  summary: { type: String, trim: true, maxlength: 1000, required: true },
+  items: { type: [learningPlanItemSchema], default: [] },
+  generatedAt: { type: Date, default: Date.now },
+}, timestamps)
+learningPlanSchema.index({ studentId: 1, weekStarting: 1 }, { unique: true })
+
+const academicDigestSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  weekStarting: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  content: { type: String, trim: true, maxlength: 4000, required: true },
+  generatedAt: { type: Date, default: Date.now },
+}, timestamps)
+academicDigestSchema.index({ userId: 1, weekStarting: 1 }, { unique: true })
+
+const parentDigestSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+  weekStarting: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  content: { type: String, trim: true, maxlength: 4000, required: true },
+  generatedAt: { type: Date, default: Date.now },
+}, timestamps)
+parentDigestSchema.index({ userId: 1, studentId: 1, weekStarting: 1 }, { unique: true })
+
+const portfolioEntrySchema = new Schema({
+  studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+  submissionId: { type: Schema.Types.ObjectId, ref: 'Submission', required: true },
+  reflection: { type: String, trim: true, maxlength: 2000, default: '' },
+}, timestamps)
+portfolioEntrySchema.index({ studentId: 1, submissionId: 1 }, { unique: true })
+
+const supportRequestSchema = new Schema({
+  studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+  assignmentId: { type: Schema.Types.ObjectId, ref: 'Assignment', required: true },
+  message: { type: String, trim: true, maxlength: 1000, required: true },
+  responseMessage: { type: String, trim: true, maxlength: 2000, default: '' },
+  respondedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  status: { type: String, enum: ['open', 'replied'], default: 'open' },
+}, timestamps)
+supportRequestSchema.index({ studentId: 1, createdAt: -1 })
+supportRequestSchema.index(
+  { studentId: 1, assignmentId: 1 },
+  { unique: true, partialFilterExpression: { status: 'open' } },
+)
 
 const gradeSchema = new Schema({
   studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
@@ -257,6 +313,11 @@ export const Subject = model('Subject', subjectSchema)
 export const Attendance = model('Attendance', attendanceSchema)
 export const Assignment = model('Assignment', assignmentSchema)
 export const Submission = model('Submission', submissionSchema)
+export const LearningPlan = model('LearningPlan', learningPlanSchema)
+export const AcademicDigest = model('AcademicDigest', academicDigestSchema)
+export const ParentDigest = model('ParentDigest', parentDigestSchema)
+export const PortfolioEntry = model('PortfolioEntry', portfolioEntrySchema)
+export const SupportRequest = model('SupportRequest', supportRequestSchema)
 export const Grade = model('Grade', gradeSchema)
 export const Announcement = model('Announcement', announcementSchema)
 export const Notification = model('Notification', notificationSchema)

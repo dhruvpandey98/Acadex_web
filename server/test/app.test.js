@@ -45,6 +45,22 @@ test('assignment workflow requires authentication', async () => {
   assert.equal((await response.json()).error.message, 'Authentication is required.')
 })
 
+test('Learning Hub endpoints require authentication', async () => {
+  for (const [path, method] of [
+    ['/api/learning-hub', 'GET'],
+    ['/api/learning-hub/plan', 'POST'],
+    ['/api/learning-hub/parent-digest', 'GET'],
+    ['/api/learning-hub/parent-digest', 'POST'],
+    ['/api/learning-hub/support-requests', 'GET'],
+    ['/api/learning-hub/class-workload', 'GET'],
+    ['/api/learning-hub/improvement-steps', 'POST'],
+  ]) {
+    const response = await fetch(`http://127.0.0.1:${address.port}${path}`, { method })
+    assert.equal(response.status, 401)
+    assert.equal((await response.json()).error.message, 'Authentication is required.')
+  }
+})
+
 test('login rejects empty and malformed credentials before querying the database', async () => {
   for (const body of [
     { email: '', password: '' },

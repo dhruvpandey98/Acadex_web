@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BookOpen, Check, Clock3, Download, Eye, FileText, Plus, RefreshCw, Search, Send, Upload, Users } from 'lucide-react'
+import { BookOpen, Check, Clock3, Download, Eye, FileText, Plus, RefreshCw, Search, Send, Sparkles, Upload, Users } from 'lucide-react'
 import { Button, Card, Modal, StatusBadge } from '../../components/common/UI.jsx'
 import { portalApi } from '../../services/portalService.js'
+import { clearAssignmentDraft, getAssignmentDraft, saveAssignmentDraft } from '../../services/offlineDrafts.js'
 
 const acceptedFiles = '.pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.webp,.gif'
 
@@ -45,19 +46,55 @@ function UploadProgress({ progress, fileName }) {
   </div>
 }
 
-function StudentAssignmentCard({ assignment, onSubmit, submitting, progress, success, onDismissSuccess }) {
+function StudentAssignmentCard({ assignment, userId, onSubmit, onToggleStep, submitting, progress, success, onDismissSuccess }) {
   const [files, setFiles] = useState([])
   const [comment, setComment] = useState('')
+  const [draftError, setDraftError] = useState('')
+  const [draftRestored, setDraftRestored] = useState(false)
   const canResubmit = assignment.allowResubmission !== false
+  const draftId = `${userId || 'student'}:${assignment.id}`
   const submission = assignment.submission
   const submitted = assignment.submissionStatus !== 'pending'
   const canSubmit = assignment.status === 'published' && (!submitted || canResubmit)
+
+  useEffect(() => {
+    let active = true
+    getAssignmentDraft(draftId).then((draft) => {
+      if (!active || !draft) return
+      setComment(draft.comment || '')
+      setFiles(draft.files || [])
+      setDraftRestored(Boolean(draft.comment || draft.files?.length))
+    }).catch((error) => {
+      if (active) setDraftError(error.message)
+    })
+    return () => { active = false }
+  }, [draftId])
+
+  function updateDraft(nextComment, nextFiles) {
+    setComment(nextComment)
+    setFiles(nextFiles)
+    saveAssignmentDraft(draftId, nextComment, nextFiles)
+      .then(() => setDraftError(''))
+      .catch((error) => setDraftError(error.message))
+  }
+
+  function chooseSubmissionFiles(event) {
+    const selected = [...event.target.files]
+    if (selected.length > 5 || selected.some((file) => file.size > 10 * 1024 * 1024)) {
+      setDraftError('Choose up to 5 files, each no larger than 10 MB.')
+      event.target.value = ''
+      return
+    }
+    updateDraft(comment, selected)
+  }
 
   async function submit(event) {
     event.preventDefault()
     if (await onSubmit(assignment, files, comment)) {
       setFiles([])
       setComment('')
+      setDraftRestored(false)
+      clearAssignmentDraft(draftId).catch((error) => setDraftError(error.message))
     }
   }
 
@@ -80,10 +117,12 @@ function StudentAssignmentCard({ assignment, onSubmit, submitting, progress, suc
       <div className="assignment-summary-heading"><strong>Your submission</strong><span>{prettyDate(submission.submittedAt, { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>
       {submission.submissionText && <p>{submission.submissionText}</p>}
       <FileLinks files={submission.attachments} preview />
+      {submission.history?.length > 0 && <details className="assignment-version-history"><summary>Previous versions ({submission.history.length})</summary>{submission.history.map((version, index) => <div key={`${version.submittedAt}-${index}`}><strong>Version {submission.history.length - index} · {prettyDate(version.submittedAt)}</strong><FileLinks files={version.attachments} preview />{version.feedback && <p>{version.feedback}</p>}</div>)}</details>}
       {(submission.marksObtained != null || submission.feedback) && <div className="assignment-feedback">
         {submission.marksObtained != null && <strong>Marks: {submission.marksObtained} / {assignment.totalMarks}</strong>}
         {submission.feedback && <p><b>Teacher feedback / remarks</b><br />{submission.feedback}</p>}
       </div>}
+      {submission.nextSteps?.length > 0 && <div className="assignment-revision-steps"><strong>Your next steps</strong>{submission.nextSteps.map((step, index) => <label key={`${index}-${step.text}`}><input type="checkbox" checked={step.completed} onChange={(event) => onToggleStep(assignment, index, event.target.checked)} /> <span className={step.completed ? 'assignment-step-complete' : ''}>{step.text}</span></label>)}</div>}
     </div>}
 
     {success && <p className="assignment-success" role="status"><Check size={15} /> Submission saved successfully. Your teacher can now review it.<button type="button" onClick={onDismissSuccess} aria-label="Dismiss confirmation">×</button></p>}
@@ -91,10 +130,12 @@ function StudentAssignmentCard({ assignment, onSubmit, submitting, progress, suc
       <h3>{submitted ? 'Resubmit your work' : 'Submit your work'}</h3>
       {submitted && <p className="assignment-muted">Resubmitting replaces the current version and keeps the previous version in the submission history.</p>}
       <label className="assignment-file-picker"><Upload size={16} /><span>{files.length ? `${files.length} file${files.length === 1 ? '' : 's'} selected` : 'Choose files to upload'}</span>
-        <input type="file" accept={acceptedFiles} multiple required={!submitted} onChange={(event) => setFiles([...event.target.files])} disabled={submitting || (submitted && !canResubmit)} />
+        <input type="file" accept={acceptedFiles} multiple required={!submitted && !files.length} onChange={chooseSubmissionFiles} disabled={submitting || (submitted && !canResubmit)} />
       </label>
       {files.length > 0 && <ul className="assignment-selected-files">{files.map((file) => <li key={`${file.name}-${file.size}`}>{file.name}</li>)}</ul>}
-      <label className="assignment-comment">Comment (optional)<textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={20000} placeholder="Add a note for your teacher..." disabled={submitting} /></label>
+      <label className="assignment-comment">Comment (optional)<textarea value={comment} onChange={(event) => updateDraft(event.target.value, files)} maxLength={20000} placeholder="Add a note for your teacher..." disabled={submitting} /></label>
+      {draftRestored && <p className="assignment-muted">Your unsent draft was restored from this device.</p>}
+      {draftError && <p className="assignment-inline-error" role="alert">{draftError}</p>}
       <UploadProgress progress={progress?.value ?? null} fileName={progress?.fileName} />
       <div className="assignment-submit-footer"><span>PDF, DOC, DOCX, PPT, PPTX, ZIP or image · max 10 MB per file</span><Button type="submit" disabled={submitting || (submitted && !canResubmit) || !files.length}><Send size={14} />{submitting ? 'Uploading…' : submitted ? 'Resubmit assignment' : 'Submit assignment'}</Button></div>
     </form>}
@@ -163,16 +204,18 @@ function TeacherAssignmentForm({ options, saving, progress, error, onClose, onSa
   </form>
 }
 
-function ReviewForm({ row, totalMarks, saving, error, onClose, onSave }) {
+function ReviewForm({ row, totalMarks, saving, suggesting, error, onClose, onSave, onSuggest }) {
   const [status, setStatus] = useState(row.submission?.marksObtained == null ? 'reviewed' : 'graded')
   const [marks, setMarks] = useState(row.submission?.marksObtained ?? '')
   const [feedback, setFeedback] = useState(row.submission?.feedback || '')
+  const [nextSteps, setNextSteps] = useState(row.submission?.nextSteps || [])
   function submit(event) {
     event.preventDefault()
     onSave({
       status,
       ...(marks !== '' ? { marksObtained: Number(marks) } : {}),
       feedback,
+      nextSteps,
     })
   }
   return <form className="assignment-review-form" onSubmit={submit}>
@@ -181,6 +224,11 @@ function ReviewForm({ row, totalMarks, saving, error, onClose, onSave }) {
     <label>Evaluation status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="reviewed">Reviewed</option><option value="graded">Graded</option></select></label>
     <label>Marks (out of {totalMarks})<input type="number" value={marks} onChange={(event) => setMarks(event.target.value)} min="0" max={totalMarks} step="0.5" required={status === 'graded'} /></label>
     <label>Feedback / remarks<textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} maxLength={5000} placeholder="Share helpful feedback with the student..." /></label>
+    <div className="assignment-ai-suggestion"><Button type="button" variant="outline" disabled={suggesting || feedback.trim().length < 5} onClick={async () => {
+      const suggestions = await onSuggest(feedback)
+      if (suggestions) setNextSteps(suggestions)
+    }}><Sparkles size={14} />{suggesting ? 'Drafting steps…' : 'Draft next steps with AI'}</Button><span>Gemini receives the assignment title, subject, and feedback text; uploaded files are not analyzed. Review and edit before sharing.</span></div>
+    {nextSteps.length > 0 && <div className="assignment-suggestion-list"><strong>Student revision checklist</strong>{nextSteps.map((step, index) => <label key={`${index}-${step.text}`}><input value={step.text} required minLength={5} maxLength={500} onChange={(event) => setNextSteps((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, text: event.target.value } : item))} /><button type="button" aria-label="Remove revision step" onClick={() => setNextSteps((current) => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></label>)}<Button type="button" variant="outline" onClick={() => setNextSteps((current) => [...current, { text: '', completed: false }])} disabled={nextSteps.length >= 5}>Add step</Button></div>}
     <div className="modal-actions"><Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save evaluation'}</Button></div>
   </form>
 }
@@ -203,15 +251,16 @@ export default function AssignmentsPage({ user }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [reviewTarget, setReviewTarget] = useState(null)
+  const [suggestingSteps, setSuggestingSteps] = useState(false)
 
   const load = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true)
-    setError('')
     try {
       const result = await portalApi.assignmentWorkspace()
       setAssignments(result.data)
       setOptions(result.options || { classes: [], subjects: [], students: [] })
       setSelectedId((current) => current && result.data.some((item) => item.id === current) ? current : '')
+      setError('')
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -219,7 +268,7 @@ export default function AssignmentsPage({ user }) {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(false) }, [load])
   useEffect(() => {
     if (!teacher) return undefined
     const timer = window.setInterval(() => load(false), 15000)
@@ -301,6 +350,35 @@ export default function AssignmentsPage({ user }) {
     }
   }
 
+  async function suggestRevisionSteps(feedback) {
+    if (!reviewTarget?.submission?.id) return
+    setSuggestingSteps(true)
+    setError('')
+    try {
+      const result = await portalApi.suggestAssignmentNextSteps({
+        submissionId: reviewTarget.submission.id,
+        feedback,
+      })
+      return result.data.nextSteps
+    } catch (requestError) {
+      setError(requestError.message)
+      return null
+    } finally {
+      setSuggestingSteps(false)
+    }
+  }
+
+  async function toggleRevisionStep(assignment, index, completed) {
+    if (!assignment.submission?.id) return
+    setError('')
+    try {
+      await portalApi.updateRevisionStep(assignment.submission.id, index, completed)
+      await load(false)
+    } catch (requestError) {
+      setError(requestError.message)
+    }
+  }
+
   const classOptions = teacher
     ? options.classes
     : [...new Map(assignments.map((item) => [String(item.classId), { _id: item.classId, name: item.className }])).values()]
@@ -358,14 +436,14 @@ export default function AssignmentsPage({ user }) {
             </Card>
           </section>}
         </div>
-        : <div className="assignment-student-list">{filteredAssignments.map((item) => <StudentAssignmentCard key={item.id} assignment={item} onSubmit={submitStudentWork} submitting={saving} progress={progress} success={success.includes(item.title) ? success : ''} onDismissSuccess={() => setSuccess('')} />)}</div>}
+        : <div className="assignment-student-list">{filteredAssignments.map((item) => <StudentAssignmentCard key={item.id} assignment={item} userId={user.id || user._id} onSubmit={submitStudentWork} onToggleStep={toggleRevisionStep} submitting={saving} progress={progress} success={success.includes(item.title) ? success : ''} onDismissSuccess={() => setSuccess('')} />)}</div>}
 
     <Modal open={createOpen} onClose={() => !saving && setCreateOpen(false)} title="Create an assignment" description="Share clear instructions and class materials with your students." wide>
       {!options.classes.length ? <div className="assignment-empty"><p>No classes are assigned to your teacher account yet. Ask an administrator to update your profile.</p></div>
         : <TeacherAssignmentForm options={options} saving={saving} progress={progress} error={error} onClose={() => setCreateOpen(false)} onSave={publishAssignment} />}
     </Modal>
     <Modal open={Boolean(reviewTarget)} onClose={() => !saving && setReviewTarget(null)} title="Evaluate submission" description="Save your review to make it visible to the student.">
-      {reviewTarget && <ReviewForm row={reviewTarget} totalMarks={selectedAssignment?.totalMarks || 100} saving={saving} error={error} onClose={() => setReviewTarget(null)} onSave={saveReview} />}
+      {reviewTarget && <ReviewForm row={reviewTarget} totalMarks={selectedAssignment?.totalMarks || 100} saving={saving} suggesting={suggestingSteps} error={error} onClose={() => setReviewTarget(null)} onSave={saveReview} onSuggest={suggestRevisionSteps} />}
     </Modal>
   </>
 }
