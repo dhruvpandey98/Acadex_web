@@ -39,6 +39,12 @@ test('dataset insights require authentication', async () => {
   assert.equal((await response.json()).error.message, 'Authentication is required.')
 })
 
+test('assignment workflow requires authentication', async () => {
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/assignment-workflow`)
+  assert.equal(response.status, 401)
+  assert.equal((await response.json()).error.message, 'Authentication is required.')
+})
+
 test('login rejects empty and malformed credentials before querying the database', async () => {
   for (const body of [
     { email: '', password: '' },

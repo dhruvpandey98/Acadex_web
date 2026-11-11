@@ -8,6 +8,7 @@ import { useApp } from '../../hooks/useApp.js'
 import { assistantService } from '../../services/assistantService.js'
 import { portalApi, recordPayload } from '../../services/portalService.js'
 import { authService } from '../../services/authService.js'
+import AssignmentsPage from './AssignmentsPage.jsx'
 
 const colors = ['#5549e6', '#18a879', '#f3a650', '#e47b8c']
 const fieldsFor = {
@@ -588,6 +589,7 @@ export default function PortalPage() {
   const [actionError, setActionError] = useState('')
   const [saving, setSaving] = useState(false)
   const role = user.role
+  if (section === 'assignments') return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}><AssignmentsPage user={user} /></motion.div>
   const data = section === 'students' ? students : section === 'teachers' ? teachers : section === 'assignments' ? assignments : []
   const classOptions = [...new Set(data.map((item) => section === 'teachers' ? item.subject : item.className).filter(Boolean))]
   const statusOptions = [...new Set(data.map((item) => item.status).filter(Boolean))]

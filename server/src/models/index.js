@@ -93,14 +93,27 @@ attendanceSchema.index({ classId: 1, date: 1 })
 const assignmentSchema = new Schema({
   title: { type: String, required: true, trim: true, maxlength: 200 },
   description: { type: String, trim: true, maxlength: 10000, default: '' },
+  instructions: { type: String, trim: true, maxlength: 10000, default: '' },
   subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
   classId: { type: Schema.Types.ObjectId, ref: 'Class', required: true },
   teacherId: { type: Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  targetStudents: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
   dueDate: { type: Date, required: true },
   attachments: [{ type: String, trim: true }],
   totalMarks: { type: Number, min: 0, required: true },
+  allowResubmission: { type: Boolean, default: true },
   status: { type: String, enum: ['draft', 'published', 'closed'], default: 'published' },
 }, timestamps)
+
+const submissionVersionSchema = new Schema({
+  submissionText: { type: String, trim: true, maxlength: 20000, default: '' },
+  attachments: [{ type: String, trim: true }],
+  submittedAt: { type: Date, required: true },
+  marksObtained: { type: Number, min: 0, default: null },
+  feedback: { type: String, trim: true, maxlength: 5000, default: '' },
+  status: { type: String, enum: ['submitted', 'late', 'reviewed', 'graded', 'returned'], required: true },
+  reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+}, { _id: false })
 
 const submissionSchema = new Schema({
   assignmentId: { type: Schema.Types.ObjectId, ref: 'Assignment', required: true },
@@ -110,8 +123,9 @@ const submissionSchema = new Schema({
   submittedAt: { type: Date, default: Date.now },
   marksObtained: { type: Number, min: 0, default: null },
   feedback: { type: String, trim: true, maxlength: 5000, default: '' },
-  status: { type: String, enum: ['submitted', 'reviewed', 'returned'], default: 'submitted' },
+  status: { type: String, enum: ['submitted', 'late', 'reviewed', 'graded', 'returned'], default: 'submitted' },
   reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  history: { type: [submissionVersionSchema], default: [] },
 }, timestamps)
 submissionSchema.index({ assignmentId: 1, studentId: 1 }, { unique: true })
 

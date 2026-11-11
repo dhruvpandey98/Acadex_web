@@ -5,6 +5,8 @@ const resourceNames = [
   'submissions', 'grades', 'announcements', 'notifications', 'timetable', 'fees',
 ]
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+
 function displayClass(value) {
   if (!value) return ''
   const name = value.name || ''
@@ -177,6 +179,72 @@ export function recordPayload(kind, record, { isNew, role }) {
 }
 
 export const portalApi = {
+  assignmentWorkspace: (filters = {}) => {
+    const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value))
+    const query = params.toString()
+    return apiRequest(`/assignment-workflow${query ? `?${query}` : ''}`)
+  },
+  createAssignment: (body) => apiRequest('/assignment-workflow', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+  submitAssignmentFiles: (assignmentId, body) => apiRequest(`/assignment-workflow/${encodeURIComponent(assignmentId)}/submissions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+  evaluateAssignmentSubmission: (submissionId, body) => apiRequest(`/assignment-workflow/submissions/${encodeURIComponent(submissionId)}/review`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }),
+  uploadAssignmentFile: async (file, onProgress = () => {}) => {
+    async function upload() {
+      return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest()
+        request.open('POST', `${API_BASE_URL}/uploads`)
+        request.withCredentials = true
+        request.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) onProgress(Math.round(event.loaded * 100 / event.total))
+        })
+        request.addEventListener('load', () => {
+          let payload
+          try {
+            payload = request.responseText ? JSON.parse(request.responseText) : null
+          } catch {
+            reject(new Error('Acadex returned an invalid upload response.'))
+            return
+          }
+          if (request.status >= 200 && request.status < 300) {
+            resolve(payload.data)
+            return
+          }
+          if (request.status >= 500) {
+            reject(new Error('Acadex is temporarily unavailable. Please try again in a moment.'))
+            return
+          }
+          reject(new Error(payload?.error?.message || `Upload failed with status ${request.status}.`))
+        })
+        request.addEventListener('error', () => reject(new Error('Could not connect to Acadex. Check your connection and try again.')))
+        request.addEventListener('timeout', () => reject(new Error('The upload took too long. Please try again.')))
+        request.timeout = 60_000
+        const formData = new FormData()
+        formData.append('file', file)
+        request.send(formData)
+      })
+    }
+
+    try {
+      return await upload()
+    } catch (error) {
+      if (!/status 401/.test(error.message)) throw error
+      try {
+        await apiRequest('/auth/refresh', { method: 'POST' })
+        return await upload()
+      } catch (refreshError) {
+        window.dispatchEvent(new Event('acadex:unauthorized'))
+        throw refreshError
+      }
+    }
+  },
   datasetInsights: ({ page = 1, limit = 10, search = '' } = {}) => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) })
     if (search) params.set('search', search)

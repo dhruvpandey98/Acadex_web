@@ -79,7 +79,13 @@ async function accessScope(key, user) {
     return { _id: { $in: [...subjectTeacherIds, ...classTeacherIds].filter(Boolean) } }
   }
   if (key === 'students') return student ? { userId: user.id } : { _id: { $in: studentIds } }
-  if (key === 'assignments') return { classId: { $in: ownClasses } }
+  if (key === 'assignments') {
+    return {
+      classId: { $in: ownClasses },
+      status: { $in: ['published', 'closed'] },
+      $or: [{ targetStudents: { $size: 0 } }, { targetStudents: { $in: studentIds } }],
+    }
+  }
   if (key === 'attendance' || key === 'grades' || key === 'fees') return { studentId: { $in: studentIds } }
   if (key === 'submissions') return { studentId: { $in: studentIds } }
   if (key === 'classes') return { _id: { $in: ownClasses } }
@@ -98,6 +104,7 @@ function pickFields(bodyValue, fields) {
 }
 
 function resourceProjection(key, role) {
+  if (key === 'assignments' && role !== 'admin' && role !== 'teacher') return '-targetStudents'
   if (key === 'teachers' && role !== 'admin' && role !== 'teacher') {
     return 'userId name department qualification subjects assignedClasses status'
   }
@@ -353,6 +360,9 @@ function resourceRoute(key, spec) {
     }),
   )
   resource.post('/', allowRoles(...spec.write), asyncHandler(async (req, res) => {
+    if (key === 'submissions' && req.user.role === 'student') {
+      throw new AppError(400, 'Use the assignment submission endpoint to upload your work.')
+    }
     const fields = pickFields(req.body, spec.fields)
     let linkedAccount
     const accountRole = { students: 'student', teachers: 'teacher', parents: 'parent' }[key]
@@ -444,6 +454,9 @@ function resourceRoute(key, spec) {
     res.json({ data: record })
   }))
   resource.put('/:id', allowRoles(...spec.write), param('id').isMongoId(), validate, asyncHandler(async (req, res) => {
+    if (key === 'submissions' && req.user.role === 'student') {
+      throw new AppError(400, 'Use the assignment submission endpoint to update your work.')
+    }
     const scope = await accessScope(key, req.user)
     const changes = pickFields(req.body, spec.fields)
     const current = await spec.model.findOne({ _id: req.params.id, ...scope })

@@ -181,3 +181,145 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .dataset-collection-list > div { display: flex; justify-content: space-between; gap: 8px; padding: 9px 10px; border: 1px solid #eff0f4; border-radius: 7px; color: #70798b; font-size: 8px; text-transform: capitalize; }
 .dataset-collection-list strong { color: #424b5e; }
 @media (max-width: 700px) { .dataset-collection-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.assignment-page-heading { align-items: flex-start; }
+.assignment-page-heading .heading-actions { align-items: center; }
+.assignment-page-error, .assignment-page-success { display: flex; align-items: center; gap: 8px; }
+.assignment-page-error button, .assignment-success button { margin-left: auto; border: 0; color: inherit; background: transparent; font-weight: 700; }
+.assignment-filters { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(130px, 1fr)); gap: 9px; padding: 12px; margin-bottom: 13px; }
+.assignment-filters > label { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; color: #858da0; }
+.assignment-filters input, .assignment-filters select, .assignment-create-form input, .assignment-create-form select, .assignment-create-form textarea, .assignment-review-form input, .assignment-review-form select, .assignment-review-form textarea { width: 100%; min-width: 0; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; outline: 0; color: #3e475b; background: white; font-size: 12px; }
+.assignment-filters input { padding: 0; border: 0; }
+.assignment-filters select { background: white; }
+.assignment-filters input:focus, .assignment-create-form input:focus, .assignment-create-form select:focus, .assignment-create-form textarea:focus, .assignment-review-form input:focus, .assignment-review-form select:focus, .assignment-review-form textarea:focus { border-color: #9c95ed; box-shadow: 0 0 0 3px #f1f0ff; }
+.assignment-workspace { display: grid; grid-template-columns: minmax(250px, .75fr) minmax(0, 1.8fr); gap: 13px; align-items: start; }
+.assignment-list-card, .assignment-detail-card, .assignment-submissions-card, .assignment-student-card { overflow: hidden; }
+.assignment-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 18px; border-bottom: 1px solid #eff0f4; }
+.assignment-list-heading h2, .assignment-detail-heading h2, .assignment-card-title h2 { margin: 0; color: #273148; font: 750 15px 'Manrope', sans-serif; letter-spacing: -.3px; }
+.assignment-list-heading p, .assignment-detail-heading > div > p:last-child, .assignment-card-title p { margin: 5px 0 0; color: #8790a2; font-size: 11px; }
+.assignment-list { display: grid; }
+.assignment-list-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 13px 15px; border: 0; border-bottom: 1px solid #f0f1f5; text-align: left; background: white; }
+.assignment-list-item:last-child { border-bottom: 0; }
+.assignment-list-item:hover, .assignment-list-active { background: #f8f7ff; }
+.assignment-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border-radius: 10px; color: #5549e6; background: #f0efff; }
+.assignment-list-copy { display: grid; min-width: 0; flex: 1; gap: 5px; }
+.assignment-list-copy strong { overflow: hidden; color: #394258; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.assignment-list-copy small, .assignment-list-date { color: #8e97a7; font-size: 9px; }
+.assignment-list-date { flex: 0 0 auto; padding-top: 2px; }
+.assignment-progress-track { height: 4px; overflow: hidden; border-radius: 5px; background: #eff0f5; }
+.assignment-progress-track i { display: block; height: 100%; border-radius: inherit; background: #6558eb; }
+.assignment-detail-column { display: grid; min-width: 0; gap: 13px; }
+.assignment-detail-card { padding: 18px; }
+.assignment-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.assignment-detail-heading h2 { margin-top: 5px; font-size: 18px; }
+.assignment-count-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
+.assignment-count-grid > div { display: grid; justify-items: start; gap: 5px; min-width: 0; padding: 11px; border: 1px solid #eff0f4; border-radius: 9px; color: #747e92; font-size: 9px; }
+.assignment-count-grid svg { color: #6559de; }
+.assignment-count-grid strong { color: #303a50; font: 750 18px 'Manrope', sans-serif; }
+.assignment-progress-large { margin-top: 15px; }
+.assignment-progress-large > div { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: #667187; font-size: 10px; }
+.assignment-progress-large strong { color: #5146ca; }
+.assignment-progress-large progress, .assignment-upload-progress progress { display: block; width: 100%; height: 7px; overflow: hidden; border: 0; border-radius: 6px; appearance: none; background: #eff0f5; }
+.assignment-progress-large progress::-webkit-progress-bar, .assignment-upload-progress progress::-webkit-progress-bar { border-radius: 6px; background: #eff0f5; }
+.assignment-progress-large progress::-webkit-progress-value, .assignment-upload-progress progress::-webkit-progress-value { border-radius: 6px; background: #6558eb; }
+.assignment-progress-large progress::-moz-progress-bar, .assignment-upload-progress progress::-moz-progress-bar { border-radius: 6px; background: #6558eb; }
+.assignment-description { margin: 14px 0 0; color: #5e687d; font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.assignment-instructions, .assignment-reference { display: grid; gap: 7px; margin-top: 13px; padding: 11px 12px; border: 1px solid #eff0f4; border-radius: 9px; color: #525d73; font-size: 11px; }
+.assignment-instructions p { margin: 0; color: #778196; line-height: 1.6; white-space: pre-wrap; }
+.assignment-files { display: flex; flex-wrap: wrap; gap: 7px; }
+.assignment-files a { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 8px; border: 1px solid #e8e9f1; border-radius: 7px; color: #5048be; background: #fbfaff; font-size: 10px; overflow-wrap: anywhere; }
+.assignment-files a:hover { border-color: #c9c4f6; background: #f5f4ff; }
+.assignment-submissions-card .assignment-list-heading { align-items: center; }
+.assignment-list-heading select { min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; color: #606b80; background: white; font-size: 10px; }
+.assignment-submission-table-wrap { width: 100%; overflow-x: auto; }
+.assignment-submission-table { width: 100%; border-collapse: collapse; text-align: left; }
+.assignment-submission-table th { padding: 10px 12px; color: #969eac; font-size: 8px; letter-spacing: .6px; white-space: nowrap; }
+.assignment-submission-table td { padding: 11px 12px; border-top: 1px solid #f0f1f5; color: #667187; font-size: 10px; vertical-align: top; }
+.assignment-submission-table td > strong, .assignment-submission-table td > small { display: block; }
+.assignment-submission-table td > strong { color: #394258; font-size: 10px; }
+.assignment-submission-table td > small { margin-top: 4px; color: #8b94a4; font-size: 9px; }
+.assignment-submission-table .button { min-height: 30px; padding: 0 9px; font-size: 9px; white-space: nowrap; }
+.assignment-submission-table .assignment-files { min-width: 110px; }
+.assignment-row-comment { display: block; max-width: 180px; margin-top: 5px; overflow-wrap: anywhere; white-space: normal; }
+.assignment-empty-row { padding: 18px; color: #8992a2; font-size: 11px; }
+.assignment-student-list { display: grid; gap: 13px; }
+.assignment-student-card { padding: 17px; }
+.assignment-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.assignment-card-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.assignment-card-title > div { min-width: 0; }
+.assignment-card-title h2 { overflow-wrap: anywhere; }
+.assignment-card-title p span { padding: 0 3px; }
+.assignment-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; padding: 12px; border-radius: 9px; background: #f8f9fc; }
+.assignment-facts span { display: grid; gap: 4px; color: #4a556a; font-size: 11px; overflow-wrap: anywhere; }
+.assignment-facts strong { color: #949bab; font-size: 9px; font-weight: 600; }
+.assignment-submission-summary { display: grid; gap: 9px; margin-top: 14px; padding: 12px; border: 1px solid #e9e7fb; border-radius: 9px; background: #fbfaff; }
+.assignment-summary-heading { display: flex; justify-content: space-between; gap: 8px; color: #4b5369; font-size: 11px; }
+.assignment-summary-heading span { color: #8991a1; font-size: 10px; }
+.assignment-submission-summary > p, .assignment-feedback p { margin: 0; color: #667187; font-size: 11px; line-height: 1.6; white-space: pre-wrap; }
+.assignment-feedback { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid #edebf6; color: #278361; font-size: 11px; }
+.assignment-submit-form { display: grid; gap: 10px; margin-top: 15px; padding-top: 14px; border-top: 1px solid #eff0f4; }
+.assignment-submit-form h3 { margin: 0; color: #3d465c; font: 700 13px 'Manrope', sans-serif; }
+.assignment-file-picker { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 11px; border: 1px dashed #c9c5e9; border-radius: 8px; color: #5d54c6; background: #fbfaff; font-size: 11px; cursor: pointer; }
+.assignment-file-picker input { width: 1px; height: 1px; overflow: hidden; opacity: 0; position: absolute; }
+.assignment-comment, .assignment-create-form > label:not(.assignment-checkbox), .assignment-review-form > label { display: grid; gap: 6px; color: #505a6f; font-size: 10px; font-weight: 700; }
+.assignment-comment textarea, .assignment-create-form textarea, .assignment-review-form textarea { min-height: 70px; resize: vertical; line-height: 1.5; }
+.assignment-selected-files { display: grid; gap: 4px; padding-left: 20px; margin: 0; color: #737d90; font-size: 10px; overflow-wrap: anywhere; }
+.assignment-submit-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.assignment-submit-footer > span, .assignment-muted { color: #8790a1; font-size: 9px; line-height: 1.5; }
+.assignment-submit-footer .button { flex: 0 0 auto; min-height: 36px; }
+.assignment-upload-progress { display: grid; gap: 6px; color: #677287; font-size: 10px; }
+.assignment-upload-progress > div { display: flex; justify-content: space-between; gap: 8px; }
+.assignment-upload-progress strong { color: #564bd1; }
+.assignment-success { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #d9f0e5; border-radius: 8px; color: #247e5f; background: #f0fbf6; font-size: 10px; }
+.assignment-success svg { flex: 0 0 auto; }
+.assignment-create-form, .assignment-review-form { display: grid; gap: 13px; padding: 18px; }
+.assignment-create-form label, .assignment-review-form label { min-width: 0; }
+.assignment-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.assignment-form-grid label { display: grid; gap: 6px; color: #505a6f; font-size: 10px; font-weight: 700; }
+.assignment-targets { display: grid; gap: 9px; padding: 12px; border: 1px solid #eff0f4; border-radius: 9px; }
+.assignment-targets > div:first-child { display: grid; gap: 4px; color: #424d63; font-size: 11px; }
+.assignment-targets > div:first-child span { color: #8a93a3; font-size: 9px; }
+.assignment-checkbox { display: flex; align-items: flex-start; gap: 8px; color: #596479; font-size: 10px; line-height: 1.5; }
+.assignment-checkbox input { width: 15px; min-height: 15px; height: 15px; flex: 0 0 auto; margin: 1px 0 0; accent-color: var(--brand); }
+.assignment-student-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; max-height: 155px; overflow-y: auto; padding: 9px; border-radius: 7px; background: #f8f9fc; }
+.assignment-inline-error { color: #b94d5e; font-size: 9px; }
+.assignment-create-form .modal-actions, .assignment-review-form .modal-actions { margin: 0; }
+.assignment-review-form > p { margin: 0; color: #747e92; font-size: 11px; }
+.assignment-review-form > p strong { color: #3d465c; }
+.assignment-empty { display: grid; justify-items: center; padding: 45px 20px; text-align: center; }
+.assignment-empty h2 { margin: 10px 0 0; color: #333d52; font: 700 15px 'Manrope', sans-serif; }
+.assignment-empty p { max-width: 420px; margin: 7px 0 0; color: #8790a1; font-size: 11px; line-height: 1.6; }
+.assignment-empty-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; color: #5b50d4; background: #f0efff; }
+.assignment-muted { margin: 0; }
+.status-blue { color: #3475b0; background: #edf5ff; }
+.status-amber { color: #a56a11; background: #fff5df; }
+.status-green { color: #198c67; background: #e9f8f1; }
+.assignment-student-card > .status-badge, .assignment-card-header > .status-badge { flex: 0 0 auto; }
+@media (max-width: 900px) {
+  .assignment-workspace { grid-template-columns: 1fr; }
+  .assignment-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .assignment-list-item { border-right: 1px solid #f0f1f5; }
+  .assignment-list-item:nth-child(2n) { border-right: 0; }
+}
+@media (max-width: 700px) {
+  .assignment-page-heading { gap: 10px; }
+  .assignment-page-heading .heading-actions { width: 100%; }
+  .assignment-filters { grid-template-columns: 1fr 1fr; }
+  .assignment-filters > label { grid-column: 1 / -1; min-height: 36px; }
+  .assignment-list { grid-template-columns: 1fr; }
+  .assignment-list-item { border-right: 0; }
+  .assignment-count-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .assignment-facts { grid-template-columns: 1fr 1fr; }
+  .assignment-student-checks { grid-template-columns: 1fr; }
+  .assignment-submit-footer { align-items: flex-start; flex-direction: column; }
+  .assignment-submit-footer .button { width: 100%; }
+  .assignment-detail-heading { flex-direction: column; }
+}
+@media (max-width: 420px) {
+  .assignment-filters { grid-template-columns: 1fr; }
+  .assignment-filters > label { grid-column: auto; }
+  .assignment-form-grid { grid-template-columns: 1fr; }
+  .assignment-card-header { align-items: flex-start; flex-direction: column; }
+  .assignment-count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .assignment-detail-card { padding: 13px; }
+  .assignment-student-card { padding: 13px; }
+}

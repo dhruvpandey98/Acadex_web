@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit'
 import swaggerJsdoc from 'swagger-jsdoc'
 import swaggerUi from 'swagger-ui-express'
 import authRoutes from './routes/auth.js'
+import assignmentWorkflowRoutes from './routes/assignmentWorkflow.js'
 import resourceRoutes from './routes/resources.js'
 import dashboardRoutes from './routes/dashboard.js'
 import uploadRoutes from './routes/uploads.js'
@@ -39,6 +40,7 @@ export async function createApp() {
     })
   })
   app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false }), authRoutes)
+  app.use('/api/assignment-workflow', assignmentWorkflowRoutes)
   app.use('/api', resourceRoutes)
   app.use('/api/dashboard', dashboardRoutes)
   app.use('/api/uploads', uploadRoutes)
@@ -84,6 +86,18 @@ export async function createApp() {
     '/submissions/{id}/review': {
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
       put: { summary: 'Review a student submission', security: [{ accessCookie: [] }], responses: { 200: { description: 'Submission reviewed.' } } },
+    },
+    '/assignment-workflow': {
+      get: { summary: 'List role-scoped assignments, rosters, and submissions', security: [{ accessCookie: [] }], responses: { 200: { description: 'Assignments and submission progress for the current student or teacher.' } } },
+      post: { summary: 'Publish an assignment to an assigned class or selected students', security: [{ accessCookie: [] }], responses: { 201: { description: 'Assignment published.' } } },
+    },
+    '/assignment-workflow/{assignmentId}/submissions': {
+      parameters: [{ name: 'assignmentId', in: 'path', required: true, schema: { type: 'string' } }],
+      post: { summary: 'Submit files for an assigned student assignment', security: [{ accessCookie: [] }], responses: { 201: { description: 'Submission created or resubmitted.' } } },
+    },
+    '/assignment-workflow/submissions/{submissionId}/review': {
+      parameters: [{ name: 'submissionId', in: 'path', required: true, schema: { type: 'string' } }],
+      put: { summary: 'Record a review, marks, and feedback for an assignment submission', security: [{ accessCookie: [] }], responses: { 200: { description: 'Submission evaluation saved.' } } },
     },
     '/notifications/read-all': { patch: { summary: 'Mark all notifications read', security: [{ accessCookie: [] }], responses: { 200: { description: 'Read status updated.' } } } },
     '/notifications/{id}/read': { patch: { summary: 'Mark one notification read', security: [{ accessCookie: [] }], responses: { 200: { description: 'Read status updated.' } } } },

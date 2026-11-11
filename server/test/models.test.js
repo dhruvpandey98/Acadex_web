@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import mongoose from 'mongoose'
-import { AssistantConversation, Attendance, Conversation, Grade, PasswordReset, Timetable, Upload, User } from '../src/models/index.js'
+import { Assignment, AssistantConversation, Attendance, Conversation, Grade, PasswordReset, Submission, Timetable, Upload, User } from '../src/models/index.js'
 
 test('attendance schema enforces one record per student and date', () => {
   const uniqueAttendanceIndex = Attendance.schema.indexes().find(([keys, options]) => (
@@ -24,6 +24,13 @@ test('upload contents are stored in MongoDB and excluded from ordinary queries',
 test('password reset and conversation uniqueness have database indexes', () => {
   assert.equal(PasswordReset.schema.path('expiresAt').options.expires, 0)
   assert.equal(Conversation.schema.path('participantKey').options.unique, true)
+})
+
+test('assignments support student targeting and resubmission while submissions keep version history', () => {
+  assert.deepEqual(new Assignment().targetStudents, [])
+  assert.equal(new Assignment().allowResubmission, true)
+  assert.equal(Submission.schema.path('history').instance, 'Array')
+  assert.equal(Submission.schema.path('history').schema.path('attachments').instance, 'Array')
 })
 
 test('study chat records are owned and keep a bounded, typed message history', () => {
