@@ -7,13 +7,14 @@ const timestamps = { timestamps: true, strict: 'throw' }
 const userSchema = new Schema({
   name: { type: String, required: true, trim: true, maxlength: 120 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 254 },
-  passwordHash: { type: String, required: true, select: false },
+  passwordHash: { type: String, select: false },
   role: { type: String, enum: roles, required: true, immutable: true },
   profileImage: { type: String, default: '' },
   phone: { type: String, trim: true, maxlength: 32, default: '' },
   address: { type: String, trim: true, maxlength: 500, default: '' },
   isActive: { type: Boolean, default: true },
   isEmailVerified: { type: Boolean, default: false },
+  approvalStatus: { type: String, enum: ['pending', 'approved'], default: 'approved' },
   lastLogin: Date,
   refreshTokenHashes: { type: [String], select: false, default: [] },
   tokenVersion: { type: Number, default: 0, select: false },
@@ -277,6 +278,13 @@ const passwordResetSchema = new Schema({
   expiresAt: { type: Date, required: true, expires: 0 },
 }, { timestamps: true })
 
+const registrationVerificationSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  codeHash: { type: String, required: true, select: false },
+  attempts: { type: Number, default: 0 },
+  expiresAt: { type: Date, required: true, expires: 0 },
+}, { timestamps: true })
+
 const uploadSchema = new Schema({
   storedName: { type: String, required: true, unique: true },
   originalName: { type: String, required: true },
@@ -326,5 +334,6 @@ export const Message = model('Message', messageSchema)
 export const Fee = model('Fee', feeSchema)
 export const Timetable = model('Timetable', timetableSchema)
 export const PasswordReset = model('PasswordReset', passwordResetSchema)
+export const RegistrationVerification = model('RegistrationVerification', registrationVerificationSchema)
 export const Upload = model('Upload', uploadSchema)
 export const AssistantConversation = model('AssistantConversation', assistantConversationSchema)

@@ -9,6 +9,8 @@ import { authenticate, allowRoles } from '../middleware/auth.js'
 import { validate } from '../middleware/validate.js'
 import { assignmentVisibilityForStudents } from '../utils/assignmentVisibility.js'
 import { AppError, asyncHandler } from '../utils/errors.js'
+import { isMailConfigured, sendMail } from '../utils/mail.js'
+import { getClientUrl } from '../config/clientUrl.js'
 
 const router = Router()
 const specs = {
@@ -118,7 +120,7 @@ function resourceProjection(key, role) {
 function populateResource(key, queryBuilder) {
   const paths = {
     parents: [['userId', 'name email isActive'], ['children', 'name admissionNumber classId']],
-    students: [['userId', 'name email isActive'], ['classId', 'name section'], ['parentIds', 'name email']],
+    students: [['userId', 'name email isActive isEmailVerified approvalStatus'], ['classId', 'name section'], ['parentIds', 'name email']],
     teachers: [['userId', 'name email isActive'], ['subjects', 'name'], ['assignedClasses', 'name section']],
     classes: [['classTeacherId', 'name'], ['subjects', 'name'], ['students', 'name']],
     subjects: [['classId', 'name section'], ['teacherId', 'name']],
@@ -575,6 +577,7 @@ function resourceRoute(key, spec) {
         email: fields.email,
         passwordHash: await bcrypt.hash(req.body.password, 12),
         role: accountRole,
+        isEmailVerified: true,
         phone: fields.phone || '',
         address: fields.address || '',
       })
@@ -938,10 +941,25 @@ router.patch('/users/:id/status', authenticate, allowRoles('admin'), param('id')
     }
     const user = await User.findById(req.params.id).select('+tokenVersion +refreshTokenHashes')
     if (!user) throw new AppError(404, 'User not found.')
+    const approvingRequest = req.body.isActive && user.approvalStatus === 'pending'
+    if (approvingRequest && !user.isEmailVerified) {
+      throw new AppError(400, 'The student must verify their email before approval.')
+    }
+    if (approvingRequest && !isMailConfigured()) {
+      throw new AppError(503, 'Account email is not configured on this server.')
+    }
     user.isActive = req.body.isActive
+    if (approvingRequest) user.approvalStatus = 'approved'
     if (!user.isActive) {
       user.tokenVersion += 1
       user.refreshTokenHashes = []
+    }
+    if (approvingRequest) {
+      await sendMail({
+        to: user.email,
+        subject: 'Your Acadex account is ready',
+        text: `Your Acadex account has been approved. You can now sign in at ${getClientUrl()}/login.`,
+      })
     }
     await user.save()
     res.json({ data: { id: user.id, isActive: user.isActive } })

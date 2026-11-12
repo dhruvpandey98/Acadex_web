@@ -161,7 +161,7 @@ function RecordTable({ kind, records, onEdit, onDelete, onView, onToggleActive, 
                 {kind === 'classes' && <><td>{item.academicYear}</td><td>{item.teacherName}</td><td><span className="table-number">{item.studentCount} students</span></td></>}
                 {kind === 'subjects' && <><td>{item.subjectCode}</td><td>{item.className}</td><td>{item.teacherName}</td></>}
                 {kind === 'assignments' && <><td><span className="table-primary">{item.subject}</span><small className="table-secondary">{item.className}</small></td><td><span className="table-primary">{new Date(`${item.due}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></td><td><span className="table-number">{item.submitted} / {item.total}</span></td><td><StatusBadge tone={item.status === 'Reviewing' ? 'blue' : item.status === 'Not started' ? 'amber' : 'green'}>{item.status}</StatusBadge></td></>}
-                <td><div className="row-actions"><button className="icon-button" aria-label="View details" onClick={() => onView(item)}><BookOpen size={15} /></button><button className="icon-button" aria-label={canEdit ? 'Edit' : 'View profile'} onClick={() => onEdit(item)}><MoreHorizontal size={16} /></button>{canEdit && ['students', 'teachers', 'parents'].includes(kind) && <button className="icon-button" aria-label={`${item.accountActive ? 'Pause' : 'Restore'} ${kind === 'students' ? 'student' : kind === 'teachers' ? 'teacher' : 'parent'} access`} onClick={() => onToggleActive(item)}><Power size={15} /></button>}{canEdit && <button className="icon-button delete-icon" aria-label="Delete" onClick={() => onDelete(item)}><X size={15} /></button>}</div></td>
+                <td><div className="row-actions"><button className="icon-button" aria-label="View details" onClick={() => onView(item)}><BookOpen size={15} /></button><button className="icon-button" aria-label={canEdit ? 'Edit' : 'View profile'} onClick={() => onEdit(item)}><MoreHorizontal size={16} /></button>{canEdit && ['students', 'teachers', 'parents'].includes(kind) && <button className="icon-button" aria-label={item.approvalStatus === 'pending' ? item.emailVerified ? 'Approve student account' : 'Await student email verification' : `${item.accountActive ? 'Pause' : 'Restore'} ${kind === 'students' ? 'student' : kind === 'teachers' ? 'teacher' : 'parent'} access`} onClick={() => onToggleActive(item)} disabled={item.approvalStatus === 'pending' && !item.emailVerified}><Power size={15} /></button>}{canEdit && <button className="icon-button delete-icon" aria-label="Delete" onClick={() => onDelete(item)}><X size={15} /></button>}</div></td>
               </tr>
             ))}
           </tbody>
@@ -792,7 +792,7 @@ export default function PortalPage() {
       return
     }
     const isActive = !item.accountActive
-    const action = isActive ? 'restore access for' : 'pause access for'
+    const action = isActive ? item.approvalStatus === 'pending' ? 'approve' : 'restore access for' : 'pause access for'
     if (!window.confirm(`Are you sure you want to ${action} ${item.name}?`)) return
     setActionError('')
     try {

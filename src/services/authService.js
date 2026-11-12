@@ -5,6 +5,18 @@ export const authService = {
     method: 'POST',
     body: JSON.stringify({ name, email, password }),
   }),
+  verifyRegistration: (email, code) => apiRequest('/auth/verify-registration', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  }),
+  resendRegistrationCode: (email) => apiRequest('/auth/resend-registration-code', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  googleRegister: (credential) => apiRequest('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  }),
   login: (email, password) => apiRequest('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),

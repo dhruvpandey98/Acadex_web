@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import mongoose from 'mongoose'
-import { AcademicDigest, Assignment, AssistantConversation, Attendance, Conversation, Grade, LearningPlan, ParentDigest, PortfolioEntry, PasswordReset, Submission, SupportRequest, Timetable, Upload, User } from '../src/models/index.js'
+import { AcademicDigest, Assignment, AssistantConversation, Attendance, Conversation, Grade, LearningPlan, ParentDigest, PortfolioEntry, PasswordReset, RegistrationVerification, Submission, SupportRequest, Timetable, Upload, User } from '../src/models/index.js'
 
 test('attendance schema enforces one record per student and date', () => {
   const uniqueAttendanceIndex = Attendance.schema.indexes().find(([keys, options]) => (
@@ -24,6 +24,13 @@ test('upload contents are stored in MongoDB and excluded from ordinary queries',
 test('password reset and conversation uniqueness have database indexes', () => {
   assert.equal(PasswordReset.schema.path('expiresAt').options.expires, 0)
   assert.equal(Conversation.schema.path('participantKey').options.unique, true)
+})
+
+test('registration codes expire and Google users can be passwordless', () => {
+  assert.equal(RegistrationVerification.schema.path('expiresAt').options.expires, 0)
+  assert.equal(RegistrationVerification.schema.path('userId').options.unique, true)
+  assert.equal(RegistrationVerification.schema.path('codeHash').options.select, false)
+  assert.equal(User.schema.path('passwordHash').options.required, undefined)
 })
 
 test('assignments support student targeting and resubmission while submissions keep version history', () => {

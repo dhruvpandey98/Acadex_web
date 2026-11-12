@@ -26,7 +26,16 @@ export async function createApp() {
   const app = express()
   app.disable('x-powered-by')
   app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false)
-  app.use(helmet())
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'script-src': ["'self'", 'https://accounts.google.com/gsi/client'],
+        'frame-src': ["'self'", 'https://accounts.google.com/gsi/'],
+        'connect-src': ["'self'", 'https://accounts.google.com/gsi/'],
+      },
+    },
+  }))
   app.use(cors({
     origin: getClientUrl().split(',').map((url) => url.trim()),
     credentials: true,
@@ -67,7 +76,10 @@ export async function createApp() {
   swaggerDocument.paths = {
     '/health': { get: { summary: 'API health', responses: { 200: { description: 'Service and database are available.' }, 503: { description: 'Database is unavailable.' } } } },
     '/dataset/insights': { get: { summary: 'Read admin-only synthetic dataset insights', security: [{ accessCookie: [] }], responses: { 200: { description: 'Dataset summary and paginated synthetic student indicators.' }, 403: { description: 'Admin role required.' } } } },
-    '/auth/register': { post: { summary: 'Register a student account', responses: { 201: { description: 'Account created.' } } } },
+    '/auth/register': { post: { summary: 'Request a student account and email verification code', responses: { 201: { description: 'Verification code sent.' } } } },
+    '/auth/verify-registration': { post: { summary: 'Verify and activate a new student account email', responses: { 200: { description: 'Account created and authenticated.' } } } },
+    '/auth/resend-registration-code': { post: { summary: 'Send a replacement account verification code', responses: { 200: { description: 'Replacement code sent when verification is pending.' } } } },
+    '/auth/google': { post: { summary: 'Create or sign in to a student account with Google', responses: { 200: { description: 'Authenticated.' } } } },
     '/auth/login': { post: { summary: 'Create a session', responses: { 200: { description: 'Authenticated.' } } } },
     '/auth/logout': { post: { summary: 'End the current session', responses: { 204: { description: 'Session ended.' } } } },
     '/auth/refresh': { post: { summary: 'Rotate refresh token', responses: { 200: { description: 'Session refreshed.' } } } },

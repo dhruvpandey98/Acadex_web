@@ -47,7 +47,7 @@ export async function apiRequest(path, options = {}, canRefresh = true) {
     credentials: 'include',
   })
 
-  const refreshExempt = ['/auth/login', '/auth/register', '/auth/logout', '/auth/forgot-password', '/auth/reset-password', '/auth/refresh']
+  const refreshExempt = ['/auth/login', '/auth/register', '/auth/verify-registration', '/auth/resend-registration-code', '/auth/google', '/auth/logout', '/auth/forgot-password', '/auth/reset-password', '/auth/refresh']
   if (response.status === 401 && !refreshExempt.includes(path)) {
     if (canRefresh) {
       try {

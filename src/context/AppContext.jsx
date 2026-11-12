@@ -113,12 +113,16 @@ export function AppProvider({ children }) {
       setAuthError('')
       return displayUser
     },
-    register: async (name, email, password) => {
-      const result = await authService.register(name, email, password)
-      const displayUser = toDisplayUser(result.user)
-      setUser(displayUser)
-      setAuthError('')
-      return displayUser
+    register: (name, email, password) => authService.register(name, email, password),
+    verifyRegistration: async (email, code) => {
+      const result = await authService.verifyRegistration(email, code)
+      if (result.user) setUser(toDisplayUser(result.user))
+      return result
+    },
+    googleRegister: async (credential) => {
+      const result = await authService.googleRegister(credential)
+      if (result.user) setUser(toDisplayUser(result.user))
+      return result
     },
     logout: async () => {
       try {

@@ -34,7 +34,11 @@ function mapStudent(record, attendanceRecords, gradeRecords) {
     className: displayClass(record.classId),
     attendance: attendance.length ? Math.round(present * 100 / attendance.length) : '—',
     score: studentGrades.length ? Math.round(studentGrades.reduce((sum, item) => sum + item.percentage, 0) / studentGrades.length) : '—',
-    status: record.userId?.isActive === false ? 'Account paused' : record.status === 'active' ? 'Active' : record.status,
+    status: record.userId?.approvalStatus === 'pending'
+      ? record.userId?.isEmailVerified ? 'Pending approval' : 'Email not verified'
+      : record.userId?.isActive === false ? 'Account paused' : record.status === 'active' ? 'Active' : record.status,
+    approvalStatus: record.userId?.approvalStatus,
+    emailVerified: record.userId?.isEmailVerified,
     accountActive: record.userId?.isActive !== false,
     color: 'violet',
   }
